@@ -1991,13 +1991,36 @@ const PRINT_GROUPS=[
   {k:'notions',label:'Notions & références',desc:'Notions clés, définitions et liens pour approfondir.'},
   {k:'transcript',label:'Transcription intégrale',desc:'Le texte intégral horodaté de l\u2019enregistrement.'}
 ];
-/* ==================== EXPORT PDF — v2 ==================== */
-/* Une famille (Helvetica), quatre tailles à rôle fixe :
-   18 titre · 12 section · 10 corps · 8 mentions. Trois couleurs.
-   La mention « Écho v2 » en pied de page est la signature de cette
-   version : si elle n'y figure pas, le PDF vient soit du cache du
-   service worker, soit du repli impression (jsPDF non chargé). */
-const PDF_BUILD='v2';
+const PDF_BUILD='v3';
+
+/* ---- Polices Unicode : DejaVu Sans, téléchargée à l'export puis cachée.
+   Les polices intégrées de jsPDF ignorent la ponctuation typographique
+   (— · … '), d'où les caractères brouillés dans titres et pieds de page. */
+let _echoFonts=null;
+async function loadEchoFonts(){
+  if(_echoFonts!==null)return _echoFonts;
+  const bases=[
+    ['https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf',
+     'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf'],
+    ['https://unpkg.com/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf',
+     'https://unpkg.com/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf']
+  ];
+  const ab2b64=buf=>{
+    const u=new Uint8Array(buf);let s='';const CH=0x8000;
+    for(let i=0;i<u.length;i+=CH)s+=String.fromCharCode.apply(null,u.subarray(i,i+CH));
+    return btoa(s);
+  };
+  for(const [ru,rb] of bases){
+    try{
+      const [a,b]=await Promise.all([fetch(ru),fetch(rb)]);
+      if(!a.ok||!b.ok)throw new Error('http');
+      _echoFonts={r:ab2b64(await a.arrayBuffer()),b:ab2b64(await b.arrayBuffer())};
+      return _echoFonts;
+    }catch(e){}
+  }
+  _echoFonts=false;
+  return _echoFonts;
+}
 
 async function ensureJsPDF(){
   if(window.jspdf&&window.jspdf.jsPDF)return;
@@ -2020,72 +2043,100 @@ async function ensureJsPDF(){
   throw last||new Error('jsPDF indisponible');
 }
 
-function exportPDF(){
-  let sel={resume:true,notions:false,transcript:false};
-  try{sel=Object.assign(sel,JSON.parse(localStorage.getItem('echo_print_sel')||'{}'))}catch(e){}
-  const root=$('#modal-root');
-  const g=++_modalGen;
-  root.innerHTML=`<div class="modal-overlay"></div>
-    <div class="modal"><h3>Enregistrer le PDF</h3>
-    <p>Cochez les parties à inclure dans le fichier.</p>
-    <div class="print-checks">
-      ${PRINT_GROUPS.map(gg=>`
-        <button class="check-row${sel[gg.k]?' on':''}" data-k="${gg.k}" type="button">
-          <span class="cbox">${icon('check',13)}</span>
-          <span><span class="check-label">${esc(gg.label)}</span><span class="check-desc">${esc(gg.desc)}</span></span>
-        </button>`).join('')}
-    </div>
-    <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
-    <button class="btn-primary" data-yes="1" style="height:44px">${icon('download',16)}<span>Enregistrer le PDF</span></button></div></div>`;
-  const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
-  requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
-  const close=()=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250)};
-  ov.onclick=close;
-  m.querySelector('[data-no]').onclick=close;
-  root.querySelectorAll('.check-row').forEach(b=>b.addEventListener('click',()=>{
-    sel[b.dataset.k]=!sel[b.dataset.k];
-    b.classList.toggle('on',sel[b.dataset.k]);
-  }));
-  m.querySelector('[data-yes]').onclick=async()=>{
-    if(!sel.resume&&!sel.notions&&!sel.transcript){toast('Cochez au moins une partie.','warn');return}
-    localStorage.setItem('echo_print_sel',JSON.stringify(sel));
-    close();
-    await doSavePDF(sel);
-  };
+/* Extraction commune PDF / TXT */
+function _expHelpers(sel){
+  const root=$('#doc-body');
+  const keep=el=>{const g=el.closest('[data-print-group]');return !g||!!sel[g.dataset.printGroup]};
+  const textOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('.kt,.tstamp,.sec-tools').forEach(n=>n.remove());return (c.textContent||'').replace(/\s+/g,' ').trim()};
+  const stampOf=el=>{const k=el&&el.querySelector('.kt,.tstamp');return k?k.textContent.trim():''};
+  return {root,keep,textOf,stampOf};
 }
+
+/* ---- Sélection des parties (partagée PDF / TXT) ---- */
+function askExportParts(fmt){
+  return new Promise(res=>{
+    let sel={resume:true,notions:false,transcript:false};
+    try{sel=Object.assign(sel,JSON.parse(localStorage.getItem('echo_print_sel')||'{}'))}catch(e){}
+    const root=$('#modal-root');
+    const g=++_modalGen;
+    root.innerHTML=`<div class="modal-overlay"></div>
+      <div class="modal"><h3>Enregistrer le ${fmt==='pdf'?'PDF':'fichier texte'}</h3>
+      <p>Cochez les parties à inclure dans le fichier.</p>
+      <div class="print-checks">
+        ${PRINT_GROUPS.map(gg=>`
+          <button class="check-row${sel[gg.k]?' on':''}" data-k="${gg.k}" type="button">
+            <span class="cbox">${icon('check',13)}</span>
+            <span><span class="check-label">${esc(gg.label)}</span><span class="check-desc">${esc(gg.desc)}</span></span>
+          </button>`).join('')}
+      </div>
+      <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
+      <button class="btn-primary" data-yes="1" style="height:44px">${icon('download',16)}<span>Enregistrer</span></button></div></div>`;
+    const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
+    requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
+    const close=v=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250);res(v)};
+    ov.onclick=()=>close(null);
+    m.querySelector('[data-no]').onclick=()=>close(null);
+    root.querySelectorAll('.check-row').forEach(b=>b.addEventListener('click',()=>{
+      sel[b.dataset.k]=!sel[b.dataset.k];
+      b.classList.toggle('on',sel[b.dataset.k]);
+    }));
+    m.querySelector('[data-yes]').onclick=()=>{
+      if(!sel.resume&&!sel.notions&&!sel.transcript){toast('Cochez au moins une partie.','warn');return}
+      localStorage.setItem('echo_print_sel',JSON.stringify(sel));
+      close(sel);
+    };
+  });
+}
+
+async function exportPDF(){const sel=await askExportParts('pdf');if(sel)await doSavePDF(sel)}
+async function exportTXT(){const sel=await askExportParts('txt');if(sel)await doSaveTXT(sel)}
 
 async function doSavePDF(sel){
   const s=state.current;
   if(!s||!s.docHTML){toast('Aucun document à exporter.','warn');return}
+  try{await ensureJsPDF()}
+  catch(e){toast('Générateur PDF introuvable (hors ligne ?) — repli sur l\u2019impression navigateur.','warn',4000);doPrint(sel);return}
+  const fonts=await loadEchoFonts();
   try{
-    await ensureJsPDF();
-  }catch(e){
-    toast('Générateur PDF introuvable (hors ligne ?) — repli sur l\u2019impression navigateur.','warn',4000);
-    doPrint(sel);
-    return;
-  }
-  try{
-    buildPDF(sel,s);
-    toast('PDF enregistré.','ok');
+    buildPDF(sel,s,fonts);
+    if(fonts)toast('PDF enregistré.','ok');
+    else toast('PDF enregistré — polices Unicode indisponibles, ponctuation adaptée (— · …).','info',3800);
   }catch(e){
     toast('Génération du PDF impossible : '+(e&&e.message?e.message:'erreur')+' — repli sur l\u2019impression.','warn',4200);
     doPrint(sel);
   }
 }
 
-function buildPDF(sel,s){
+async function doSaveTXT(sel){
+  const s=state.current;
+  if(!s||!s.docHTML){toast('Aucun document à exporter.','warn');return}
+  try{buildTXT(sel,s);toast('Fichier texte enregistré.','ok')}
+  catch(e){toast('Export impossible : '+(e&&e.message?e.message:'erreur'),'warn',4200)}
+}
+
+function buildPDF(sel,s,fonts){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF('p','pt','a4');
   const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
   const M=58,CW=W-2*M,BOT=H-70;
   const INK='#1B1B18',GRAY='#6F6F68',HAIR='#DBDBD3',ACCENT='#B4530A';
-  const F='helvetica',BODY=10,LEAD=15;
-  let y=M+8; /* y = ligne de base courante — convention unique */
-
+  const LEAD=15,BODY=10;
+  let F='helvetica',UNICODE=false;
+  if(fonts&&fonts.r&&fonts.b){
+    try{
+      doc.addFileToVFS('EchoReg.ttf',fonts.r);
+      doc.addFont('EchoReg.ttf','EchoSans','normal');
+      doc.addFileToVFS('EchoBold.ttf',fonts.b);
+      doc.addFont('EchoBold.ttf','EchoSans','bold');
+      F='EchoSans';UNICODE=true;
+    }catch(e){F='helvetica'}
+  }
+  /* Repli hors ligne : translittération propre de la ponctuation non couverte */
+  const MAP={'\u2014':'-','\u2013':'-','\u2011':'-','\u2026':'...','\u2019':"'",'\u2018':"'",'\u201C':'"','\u201D':'"','\u00AB':'"','\u00BB':'"','\u00B7':'-','\u2022':'-','\u0153':'oe','\u0152':'OE'};
+  const fall=t=>UNICODE?String(t):String(t).replace(/[\u2014\u2013\u2011\u2026\u2019\u2018\u201C\u201D\u00AB\u00BB\u00B7\u2022\u0153\u0152]/g,m=>MAP[m]);
+  let y=M+8;
   const setF=(st,size)=>{doc.setFont(F,st);doc.setFontSize(size)};
   const tw=(t,st,size)=>{setF(st,size);return doc.getTextWidth(t)};
-
-  /* Césure d'un mot plus large que la colonne (URLs notamment) */
   function hardChunks(word,st,size,maxW){
     const out=[];let cur='';
     for(const ch of word){
@@ -2095,14 +2146,13 @@ function buildPDF(sel,s){
     if(cur)out.push(cur);
     return out;
   }
-  /* Retour à la ligne sur fragments stylés — corps constant */
   function wrap(runs,size,maxW){
     const lines=[[]];let x=0;
     const put=(t,st,c,w)=>{lines[lines.length-1].push({t,st,c,w});x+=w};
     for(const r of runs){
       const st=r.s||'normal';
-      const words=String(r.t==null?'':r.t).replace(/\u00A0/g,' ').split(/\s+/).filter(Boolean);
-      for(const w of words){
+      const src=fall(r.t==null?'':r.t).replace(/[\u00A0\u202F]/g,' ');
+      for(const w of src.split(/\s+/).filter(Boolean)){
         const parts=tw(w,st,size)<=maxW?[w]:hardChunks(w,st,size,maxW);
         for(const p of parts){
           const pw=tw(p,st,size),sp=tw(' ',st,size);
@@ -2128,15 +2178,11 @@ function buildPDF(sel,s){
     });
   }
   const para=(runs,o={})=>draw(wrap(runs,o.size||BODY,o.maxW||CW-(o.hang||0)),o);
-
-  const root=$('#doc-body');
-  const keep=el=>{const gg=el.closest('[data-print-group]');return !gg||!!sel[gg.dataset.printGroup]};
-  const textOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('.kt,.tstamp,.sec-tools').forEach(n=>n.remove());return (c.textContent||'').replace(/\s+/g,' ').trim()};
-  const stampOf=el=>{const k=el&&el.querySelector('.kt,.tstamp');return k?k.textContent.trim():''};
+  const {root,keep,textOf,stampOf}=_expHelpers(sel);
 
   /* ---- En-tête ---- */
   setF('bold',8);doc.setTextColor(ACCENT);
-  doc.text('É C H O    —    N O T E   D E   S Y N T H È S E',M,y);
+  doc.text(fall('ÉCHO — NOTE DE SYNTHÈSE'),M,y);
   y+=26;
   para([{t:s.title,s:'bold'}],{size:18,lead:22});
   y+=2;
@@ -2158,8 +2204,6 @@ function buildPDF(sel,s){
     runs.push({t:(tit?tit.textContent.trim():'')||'Section',s:'bold'});
     if(ts)runs.push({t:'   ['+ts+']',c:GRAY});
     const head=wrap(runs,12,CW);
-    /* Titre jamais orphelin : saut de page s'il reste moins
-       que le titre + deux lignes de corps */
     if(y+16+head.length*16+2*LEAD>BOT){doc.addPage();y=M+8}
     doc.setDrawColor(HAIR);doc.setLineWidth(0.7);
     doc.line(M,y-11,W-M,y-11);
@@ -2208,16 +2252,69 @@ function buildPDF(sel,s){
     y+=8;
   });
 
-  /* ---- Pied de page : titre courant + version + pagination ---- */
+  /* ---- Pied de page ---- */
   const total=doc.internal.getNumberOfPages();
   const short=s.title.length>60?s.title.slice(0,59)+'…':s.title;
   for(let i=1;i<=total;i++){
     doc.setPage(i);
     setF('normal',7.5);doc.setTextColor(GRAY);
-    doc.text(short,M,H-36);
-    doc.text('Écho '+PDF_BUILD+'   ·   '+i+' / '+total,W-M,H-36,{align:'right'});
+    doc.text(fall(short),M,H-36);
+    doc.text(fall('Écho '+PDF_BUILD+'   ·   '+i+' / '+total),W-M,H-36,{align:'right'});
   }
   doc.save(slug(s.title)+'.pdf');
+}
+
+/* ---- Export TXT (UTF-8, hors ligne) ---- */
+function buildTXT(sel,s){
+  const {root,keep,textOf,stampOf}=_expHelpers(sel);
+  const L=[];
+  const rule=c=>L.push(c.repeat(72));
+  const words=s.segments&&s.segments.length?wordCount(s.segments.map(x=>x.text).join(' ')):0;
+  L.push('ÉCHO — NOTE DE SYNTHÈSE');
+  rule('=');
+  L.push('');
+  L.push(s.title);
+  L.push('');
+  L.push([TYPE_LABEL[s.type]||'Enregistrement',fmtDate(s.createdAt),fmtDurLong(s.durationMs),words?words+' mots':null].filter(Boolean).join('  ·  '));
+  const leadEl=root.querySelector('.doc-lead');
+  if(leadEl&&keep(leadEl)){L.push('');L.push(leadEl.textContent.replace(/\s+/g,' ').trim())}
+  root.querySelectorAll('.sec').forEach(sec=>{
+    if(!keep(sec))return;
+    L.push('');rule('-');L.push('');
+    const numEl=sec.querySelector('.sec-n'),tit=sec.querySelector('.sec-title'),ts=stampOf(sec);
+    L.push([numEl?numEl.textContent.trim()+'.':'',tit?tit.textContent.trim():'',ts?'['+ts+']':''].filter(x=>x).join('  '));
+    L.push('');
+    const body=sec.querySelector('.sec-body');
+    if(body){
+      body.querySelectorAll(':scope > p, :scope > h3, :scope > ul, :scope > div').forEach(el=>{
+        if(!keep(el))return;
+        if(el.tagName==='P'){const t=textOf(el);if(t){L.push(t);L.push('')}}
+        else if(el.tagName==='H3'){const st=stampOf(el);L.push((st?'['+st+']  ':'')+textOf(el));L.push('')}
+        else if(el.classList.contains('keylist')){
+          el.querySelectorAll(':scope > li').forEach(li=>{const st=stampOf(li);L.push('- '+(st?'['+st+']  ':'')+textOf(li))});
+          L.push('');
+        }else if(el.classList.contains('notion')){
+          const termEl=el.querySelector('.notion-term'),st=stampOf(el.querySelector('.notion-meta')||el);
+          const defEl=el.querySelector(':scope > p, :scope > blockquote');
+          L.push((termEl?termEl.textContent.trim():'Notion')+(st?'  ['+st+']':''));
+          if(defEl)L.push('    '+textOf(defEl));
+          const links=[...el.querySelectorAll('.notion-links a')].map(a=>a.getAttribute('href')).filter(Boolean);
+          if(links.length)L.push('    Réf. : '+links.join('  ·  '));
+          L.push('');
+        }else if(el.classList.contains('tr-lines')){
+          el.querySelectorAll(':scope > .tr-line').forEach(tr=>{const st=stampOf(tr);L.push((st?'['+st+']  ':'')+textOf(tr))});
+        }else if(el.classList.contains('note-block')){
+          const nt=el.querySelector('.note-text');
+          L.push('Précision — '+((nt&&nt.textContent.trim())||textOf(el)));
+          L.push('');
+        }
+      });
+    }
+  });
+  L.push('');rule('=');
+  L.push('Généré par Écho — '+PRINT_GROUPS.filter(g=>sel[g.k]).map(g=>g.label).join(' + ')+'.');
+  L.push('Les horodatages [mm:ss] renvoient à l\u2019enregistrement audio d\u2019origine.');
+  downloadBlob(new Blob(['\ufeff'+L.join('\r\n')],{type:'text/plain;charset=utf-8'}),slug(s.title)+'.txt');
 }
 function doPrint(sel){
   const hidden=[];
@@ -2709,6 +2806,7 @@ function wire(){
       {icon:'download',label:'Télécharger l\u2019audio',fn:exportAudio},
       {icon:'docic',label:'Télécharger le document (HTML)',fn:exportHTML},
       {icon:'download',label:'Enregistrer le PDF',fn:exportPDF},
+	  {icon:'docic',label:'Enregistrer le texte (.txt)',fn:exportTXT},
       {icon:'trash',label:'Supprimer l\u2019enregistrement',danger:true,fn:async()=>{
         const ok=await confirmDialog({title:'Supprimer l\u2019enregistrement ?',body:'L\u2019audio, la transcription et le document seront définitivement supprimés.',ok:'Supprimer',danger:true});
         if(!ok||!state.current)return;
