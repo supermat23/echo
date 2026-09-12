@@ -1991,16 +1991,35 @@ const PRINT_GROUPS=[
   {k:'notions',label:'Notions & références',desc:'Notions clés, définitions et liens pour approfondir.'},
   {k:'transcript',label:'Transcription intégrale',desc:'Le texte intégral horodaté de l\u2019enregistrement.'}
 ];
+/* ==================== EXPORT PDF — v2 ==================== */
+/* Une famille (Helvetica), quatre tailles à rôle fixe :
+   18 titre · 12 section · 10 corps · 8 mentions. Trois couleurs.
+   La mention « Écho v2 » en pied de page est la signature de cette
+   version : si elle n'y figure pas, le PDF vient soit du cache du
+   service worker, soit du repli impression (jsPDF non chargé). */
+const PDF_BUILD='v2';
+
 async function ensureJsPDF(){
   if(window.jspdf&&window.jspdf.jsPDF)return;
-  await new Promise((res,rej)=>{
-    const s=document.createElement('script');
-    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    s.onload=res;s.onerror=()=>rej(new Error('chargement impossible'));
-    document.head.appendChild(s);
-  });
-  if(!(window.jspdf&&window.jspdf.jsPDF))throw new Error('jsPDF indisponible');
+  const urls=[
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
+  ];
+  let last=null;
+  for(const u of urls){
+    try{
+      await new Promise((res,rej)=>{
+        const sc=document.createElement('script');
+        sc.src=u;sc.onload=res;sc.onerror=()=>rej(new Error('chargement impossible'));
+        document.head.appendChild(sc);
+      });
+      if(window.jspdf&&window.jspdf.jsPDF)return;
+    }catch(e){last=e}
+  }
+  throw last||new Error('jsPDF indisponible');
 }
+
 function exportPDF(){
   let sel={resume:true,notions:false,transcript:false};
   try{sel=Object.assign(sel,JSON.parse(localStorage.getItem('echo_print_sel')||'{}'))}catch(e){}
@@ -2010,10 +2029,10 @@ function exportPDF(){
     <div class="modal"><h3>Enregistrer le PDF</h3>
     <p>Cochez les parties à inclure dans le fichier.</p>
     <div class="print-checks">
-      ${PRINT_GROUPS.map(g=>`
-        <button class="check-row${sel[g.k]?' on':''}" data-k="${g.k}" type="button">
+      ${PRINT_GROUPS.map(gg=>`
+        <button class="check-row${sel[gg.k]?' on':''}" data-k="${gg.k}" type="button">
           <span class="cbox">${icon('check',13)}</span>
-          <span><span class="check-label">${esc(g.label)}</span><span class="check-desc">${esc(g.desc)}</span></span>
+          <span><span class="check-label">${esc(gg.label)}</span><span class="check-desc">${esc(gg.desc)}</span></span>
         </button>`).join('')}
     </div>
     <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
@@ -2034,13 +2053,14 @@ function exportPDF(){
     await doSavePDF(sel);
   };
 }
+
 async function doSavePDF(sel){
   const s=state.current;
   if(!s||!s.docHTML){toast('Aucun document à exporter.','warn');return}
   try{
     await ensureJsPDF();
   }catch(e){
-    toast('Générateur PDF indisponible (hors ligne ?) — repli sur l\u2019impression.','warn',3800);
+    toast('Générateur PDF introuvable (hors ligne ?) — repli sur l\u2019impression navigateur.','warn',4000);
     doPrint(sel);
     return;
   }
@@ -2052,155 +2072,150 @@ async function doSavePDF(sel){
     doPrint(sel);
   }
 }
+
 function buildPDF(sel,s){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF('p','pt','a4');
   const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
-  const M=58,CW=W-2*M,BOT=H-64;
-  const INK='#1B1B18',GRAY='#707068',LIGHT='#DBDBD4',ACCENT='#B4530A';
-  const F='helvetica',BASE=10,LEAD=15;
-  let y=M;
+  const M=58,CW=W-2*M,BOT=H-70;
+  const INK='#1B1B18',GRAY='#6F6F68',HAIR='#DBDBD3',ACCENT='#B4530A';
+  const F='helvetica',BODY=10,LEAD=15;
+  let y=M+8; /* y = ligne de base courante — convention unique */
 
-  const room=h=>y+h<=BOT;
-  const page=()=>{doc.addPage();y=M};
-  const widthOf=(t,st,size)=>{doc.setFont(F,st);doc.setFontSize(size);return doc.getTextWidth(t)};
+  const setF=(st,size)=>{doc.setFont(F,st);doc.setFontSize(size)};
+  const tw=(t,st,size)=>{setF(st,size);return doc.getTextWidth(t)};
 
-  /* Retour à la ligne automatique sur des fragments stylés (couleur / graisse),
-     à corps constant : c'est ce qui garantit l'homogénéité du texte. */
+  /* Césure d'un mot plus large que la colonne (URLs notamment) */
+  function hardChunks(word,st,size,maxW){
+    const out=[];let cur='';
+    for(const ch of word){
+      if(cur&&tw(cur+ch,st,size)>maxW){out.push(cur);cur=ch}
+      else cur+=ch;
+    }
+    if(cur)out.push(cur);
+    return out;
+  }
+  /* Retour à la ligne sur fragments stylés — corps constant */
   function wrap(runs,size,maxW){
-    const lines=[[]];
-    let x=0;
-    const put=tok=>{lines[lines.length-1].push(tok);x+=tok.w};
+    const lines=[[]];let x=0;
+    const put=(t,st,c,w)=>{lines[lines.length-1].push({t,st,c,w});x+=w};
     for(const r of runs){
       const st=r.s||'normal';
-      for(const w of String(r.t||'').split(' ')){
-        if(!w)continue;
-        const ww=widthOf(w,st,size);
-        const sp=widthOf(' ',st,size);
-        if(x>0&&x+sp+ww>maxW){lines.push([]);x=0;put({t:w,c:r.c,s:st,w:ww})}
-        else{if(x>0)put({t:' ',c:r.c,s:st,w:sp});put({t:w,c:r.c,s:st,w:ww})}
+      const words=String(r.t==null?'':r.t).replace(/\u00A0/g,' ').split(/\s+/).filter(Boolean);
+      for(const w of words){
+        const parts=tw(w,st,size)<=maxW?[w]:hardChunks(w,st,size,maxW);
+        for(const p of parts){
+          const pw=tw(p,st,size),sp=tw(' ',st,size);
+          if(x>0&&x+sp+pw>maxW){lines.push([]);x=0}
+          if(x>0)put(' ',st,r.c,sp);
+          put(p,st,r.c,pw);
+        }
       }
     }
     return lines.filter(l=>l.length);
   }
-  function draw(lines,{size=BASE,indent=0,hang=0,lead=LEAD}={}){
+  function draw(lines,o){
+    const size=o.size||BODY,lead=o.lead||LEAD,indent=o.indent||0,hang=o.hang||0;
     lines.forEach((ln,i)=>{
-      if(!room(lead))page();
+      if(y>BOT){doc.addPage();y=M+8}
       let x=M+(i===0?indent:hang);
-      for(const tok of ln){
-        doc.setFont(F,tok.s);doc.setFontSize(size);doc.setTextColor(tok.c||INK);
-        doc.text(tok.t,x,y+size*.78);
-        x+=tok.w;
+      for(const tk of ln){
+        setF(tk.st,size);doc.setTextColor(tk.c||INK);
+        doc.text(tk.t,x,y);
+        x+=tk.w;
       }
       y+=lead;
     });
   }
-  const flow=(runs,opt={})=>draw(wrap(runs,opt.size||BASE,opt.maxW||CW-(opt.hang||0)),opt);
+  const para=(runs,o={})=>draw(wrap(runs,o.size||BODY,o.maxW||CW-(o.hang||0)),o);
 
   const root=$('#doc-body');
-  const keep=el=>{const g=el.closest('[data-print-group]');return !g||!!sel[g.dataset.printGroup]};
+  const keep=el=>{const gg=el.closest('[data-print-group]');return !gg||!!sel[gg.dataset.printGroup]};
   const textOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('.kt,.tstamp,.sec-tools').forEach(n=>n.remove());return (c.textContent||'').replace(/\s+/g,' ').trim()};
   const stampOf=el=>{const k=el&&el.querySelector('.kt,.tstamp');return k?k.textContent.trim():''};
 
   /* ---- En-tête ---- */
-  doc.setFont(F,'bold');doc.setFontSize(8);doc.setTextColor(ACCENT);
-  doc.setCharSpace(1.4);
-  doc.text('ÉCHO — NOTE DE SYNTHÈSE',M,y+8);
-  doc.setCharSpace(0);
-  y+=24;
-
-  flow([{t:s.title,s:'bold'}],{size:18,lead:22});
+  setF('bold',8);doc.setTextColor(ACCENT);
+  doc.text('É C H O    —    N O T E   D E   S Y N T H È S E',M,y);
+  y+=26;
+  para([{t:s.title,s:'bold'}],{size:18,lead:22});
   y+=2;
-
   const words=s.segments&&s.segments.length?wordCount(s.segments.map(x=>x.text).join(' ')):0;
-  const meta=(TYPE_LABEL[s.type]||'Enregistrement')+'   ·   '+fmtDate(s.createdAt)+'   ·   '+fmtDurLong(s.durationMs)+(words?'   ·   '+words+' mots':'');
-  flow([{t:meta,c:GRAY}],{size:8,lead:11});
+  para([{t:(TYPE_LABEL[s.type]||'Enregistrement')+'   ·   '+fmtDate(s.createdAt)+'   ·   '+fmtDurLong(s.durationMs)+(words?'   ·   '+words+' mots':''),c:GRAY}],{size:8,lead:11});
   y+=7;
-
-  const lead=root.querySelector('.doc-lead');
-  if(lead&&keep(lead)){
-    flow([{t:lead.textContent.trim(),s:'italic',c:'#3F3F39'}],{size:10.5,lead:15});
-    y+=7;
+  const leadEl=root.querySelector('.doc-lead');
+  if(leadEl&&keep(leadEl)){
+    para([{t:leadEl.textContent.trim(),s:'italic',c:'#3A3A34'}],{size:10,lead:14});
+    y+=6;
   }
 
   /* ---- Sections ---- */
   root.querySelectorAll('.sec').forEach(sec=>{
     if(!keep(sec))return;
-    if(!room(72))page();
-    doc.setDrawColor(LIGHT);doc.setLineWidth(0.7);
-    doc.line(M,y,W-M,y);
-    y+=17;
-
-    const numEl=sec.querySelector('.sec-n'),titEl=sec.querySelector('.sec-title');
-    const num=numEl?numEl.textContent.trim():'';
-    const title=titEl?titEl.textContent.trim():'';
-    const ts=stampOf(sec);
-
-    doc.setFont(F,'bold');doc.setFontSize(12);
-    let hx=M;
-    if(num){doc.setTextColor(ACCENT);doc.text(num+'.',M,y);hx=M+widthOf(num+'.','bold',12)+8}
-    doc.setTextColor(INK);
-    doc.text(title,hx,y);
-    const endX=hx+widthOf(title,'bold',12);
-    if(ts){
-      doc.setFont(F,'normal');doc.setFontSize(8);doc.setTextColor(GRAY);
-      if(endX+14+widthOf(ts,'normal',8)<=W-M)doc.text(ts,W-M,y,{align:'right'});
-      else doc.text('  '+ts,endX,y);
-    }
-    y+=8;
-
+    const tit=sec.querySelector('.sec-title'),numEl=sec.querySelector('.sec-n'),ts=stampOf(sec);
+    const runs=[];
+    if(numEl)runs.push({t:numEl.textContent.trim()+'.  ',s:'bold',c:ACCENT});
+    runs.push({t:(tit?tit.textContent.trim():'')||'Section',s:'bold'});
+    if(ts)runs.push({t:'   ['+ts+']',c:GRAY});
+    const head=wrap(runs,12,CW);
+    /* Titre jamais orphelin : saut de page s'il reste moins
+       que le titre + deux lignes de corps */
+    if(y+16+head.length*16+2*LEAD>BOT){doc.addPage();y=M+8}
+    doc.setDrawColor(HAIR);doc.setLineWidth(0.7);
+    doc.line(M,y-11,W-M,y-11);
+    y+=5;
+    draw(head,{size:12,lead:16});
+    y+=3;
     const body=sec.querySelector('.sec-body');
     if(body){
       body.querySelectorAll(':scope > p, :scope > h3, :scope > ul, :scope > div').forEach(el=>{
         if(!keep(el))return;
         if(el.tagName==='P'){
-          flow([{t:textOf(el)}]);
-          y+=5;
+          para([{t:textOf(el)}]);y+=5;
         }else if(el.tagName==='H3'){
           const st=stampOf(el);
-          flow([{t:textOf(el),s:'bold'},{t:st?'   ['+st+']':'',c:GRAY}]);
+          para([{t:textOf(el),s:'bold'},{t:st?'   ['+st+']':'',c:GRAY}],{size:10.5});
           y+=2;
         }else if(el.classList.contains('keylist')){
           el.querySelectorAll(':scope > li').forEach(li=>{
             const st=stampOf(li);
-            flow([{t:'•  ',c:GRAY},{t:st?'['+st+']  ':'',c:GRAY},{t:textOf(li)}],{hang:12,maxW:CW-12});
+            para([{t:'—  ',c:GRAY},{t:st?'['+st+']  ':'',c:GRAY},{t:textOf(li)}],{hang:12});
             y+=3;
           });
-          y+=4;
+          y+=3;
         }else if(el.classList.contains('notion')){
           const termEl=el.querySelector('.notion-term');
           const st=stampOf(el.querySelector('.notion-meta')||el);
           const defEl=el.querySelector(':scope > p, :scope > blockquote');
-          flow([{t:(termEl?termEl.textContent.trim():'Notion')||'Notion',s:'bold'},{t:st?'   ['+st+']':'',c:GRAY}]);
-          if(defEl){flow([{t:textOf(defEl)}]);y+=1}
+          para([{t:(termEl?termEl.textContent.trim():'')||'Notion',s:'bold'},{t:st?'   ['+st+']':'',c:GRAY}]);
+          if(defEl){para([{t:textOf(defEl)}]);y+=1}
           const links=[...el.querySelectorAll('.notion-links a')].map(a=>a.getAttribute('href')).filter(Boolean);
-          if(links.length)flow(links.map((l,i)=>({t:(i?'   ·   ':'')+l,c:GRAY})),{size:8,lead:11});
-          y+=9;
+          if(links.length)para(links.map((l,i)=>({t:(i?'   ·   ':'')+l,c:GRAY})),{size:8,lead:11});
+          y+=8;
         }else if(el.classList.contains('tr-lines')){
           el.querySelectorAll(':scope > .tr-line').forEach(tr=>{
             const st=stampOf(tr);
-            flow([{t:st?'['+st+']':'',c:GRAY},{t:st?'   ':''},{t:textOf(tr)}],{lead:14});
-            y+=3;
+            para([{t:st?'['+st+']   ':'',c:GRAY},{t:textOf(tr)}]);
+            y+=2;
           });
         }else if(el.classList.contains('note-block')){
           const nt=el.querySelector('.note-text');
-          const txt=(nt&&nt.textContent.trim())||textOf(el);
-          flow([{t:'Précision — ',s:'bold'},{t:txt}]);
-          y+=6;
+          para([{t:'Précision — ',s:'bold'},{t:(nt&&nt.textContent.trim())||textOf(el)}]);
+          y+=5;
         }
       });
     }
-    y+=10;
+    y+=8;
   });
 
-  /* ---- Pied de page : titre courant + pagination ---- */
+  /* ---- Pied de page : titre courant + version + pagination ---- */
   const total=doc.internal.getNumberOfPages();
-  const short=s.title.length>56?s.title.slice(0,55)+'…':s.title;
+  const short=s.title.length>60?s.title.slice(0,59)+'…':s.title;
   for(let i=1;i<=total;i++){
     doc.setPage(i);
-    doc.setFont(F,'normal');doc.setFontSize(7.5);doc.setTextColor(GRAY);
-    doc.text(short,M,H-34);
-    doc.text(i+' / '+total,W-M,H-34,{align:'right'});
+    setF('normal',7.5);doc.setTextColor(GRAY);
+    doc.text(short,M,H-36);
+    doc.text('Écho '+PDF_BUILD+'   ·   '+i+' / '+total,W-M,H-36,{align:'right'});
   }
   doc.save(slug(s.title)+'.pdf');
 }
