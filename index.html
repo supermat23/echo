@@ -1167,8 +1167,9 @@ async function runAIDraft(sess){
 }
 
 /* ==================== COMPOSITEUR ==================== */
-function composerShow(){const c=$('#composer');c.hidden=false;c.classList.remove('leaving')}
-function composerHide(){const c=$('#composer');c.classList.add('leaving');setTimeout(()=>c.hidden=true,350)}
+let _composerGen=0;
+function composerShow(){_composerGen++;const c=$('#composer');c.hidden=false;c.classList.remove('leaving')}
+function composerHide(){const g=++_composerGen;const c=$('#composer');c.classList.add('leaving');setTimeout(()=>{if(g===_composerGen)c.hidden=true},350)}
 async function composeAndShow(s){
   composerShow();
   $('#composer-title').textContent='Composition du document';
@@ -1763,7 +1764,7 @@ async function finalize(){
   $('#btn-pause').disabled=true;$('#btn-stop').disabled=true;$('#btn-mark').disabled=true;
   cancelAnimationFrame(rec.raf);
   const mr=rec.mr,ctx=rec.ctx;
-  try{if(ctx)await ctx.close()}catch(e){}
+  try{if(ctx)ctx.close().catch(()=>{})}catch(e){}
   rec.stream.getTracks().forEach(t=>t.stop());
   stopKeepAlive();
   const {title,type,mime}=rec;
@@ -1791,9 +1792,10 @@ async function finalize(){
   refreshHome();
   let choice='proceed';
   choice=await askPostRecord(sess,!!blob);
+  if(choice==='settings'){state.pending=sess;openSettings();return}
   if(choice==='api'){await runApiTranscription(sess)}
   else if(choice==='local'){await runLocalTranscription(sess)}
-  else if(choice==='settings'){state.pending=sess;openSettings();return}
+  if(state.pending===sess)return;
   if(sess.segments.length&&AI.ready){
     const okAI=await runAIDraft(sess);
     if(okAI){refreshHome();return}
