@@ -632,16 +632,18 @@ function toast(msg,type='ok',dur=2600){
   $('#toast-root').appendChild(el);requestAnimationFrame(()=>el.classList.add('in'));
   setTimeout(()=>{el.classList.remove('in');setTimeout(()=>el.remove(),300)},dur);
 }
+let _modalGen=0;
 function confirmDialog({title,body,ok='Confirmer',cancel='Annuler',danger=false}){
   return new Promise(res=>{
     const root=$('#modal-root');
+    const g=++_modalGen;
     root.innerHTML=`<div class="modal-overlay"></div>
       <div class="modal"><h3>${esc(title)}</h3><p>${esc(body)}</p>
       <div class="modal-actions"><button class="btn-ghost" data-no="1">${esc(cancel)}</button>
       <button class="${danger?'btn-danger':'btn-primary'}" data-yes="1" style="height:44px">${esc(ok)}</button></div></div>`;
     const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
     requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
-    const close=v=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>root.innerHTML='',250);res(v)};
+    const close=v=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250);res(v)};
     m.querySelector('[data-no]').onclick=()=>close(false);
     m.querySelector('[data-yes]').onclick=()=>close(true);
     ov.onclick=()=>close(false);
@@ -649,12 +651,13 @@ function confirmDialog({title,body,ok='Confirmer',cancel='Annuler',danger=false}
 }
 function openSheet(title,items){
   const root=$('#modal-root');
+  const g=++_modalGen;
   root.innerHTML=`<div class="sheet-overlay"></div><div class="bsheet"></div>`;
   const ov=root.querySelector('.sheet-overlay'),bs=root.querySelector('.bsheet');
   bs.innerHTML=`<div class="bsheet-head">${esc(title)}</div>`+items.map((it,i)=>
     `<button class="bs-item ${it.danger?'danger':''}" data-i="${i}">${icon(it.icon,19)}<span>${esc(it.label)}</span></button>`).join('');
   requestAnimationFrame(()=>{ov.classList.add('in');bs.classList.add('in')});
-  const close=()=>{ov.classList.remove('in');bs.classList.remove('in');setTimeout(()=>root.innerHTML='',300)};
+  const close=()=>{ov.classList.remove('in');bs.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},300)};
   ov.onclick=close;
   bs.querySelectorAll('.bs-item[data-i]').forEach(b=>b.onclick=()=>{const it=items[+b.dataset.i];close();setTimeout(()=>it.fn&&it.fn(),120)});
 }
@@ -1085,8 +1088,8 @@ function buildAIDocHTML(D,s){
   parts.push(`<div class="doc-head">
     <p class="doc-eyebrow">Résumé rédigé par IA — ${esc(T)}</p>
     <h1 class="doc-title">${esc(s.title)}</h1>
-    <p class="doc-meta"><span>${esc(fmtDate(s.createdAt))}</span><span>${fmtDurLong(s.durationMs)}</span><span>${words} mots transcrits</span></p>
-  </div>`);
+    <p class="doc-meta"><span>${esc(fmtDate(s.createdAt))}</span><span>${fmtDurLong(s.durationMs)}</span><span>${words} mots transcrits</span><span>résumé : ${esc(s.aiModel||AI.model)}</span></p>
+	</div>`);
   if(D.vue_densemble)parts.push(`<p class="doc-lead" data-print-group="resume">${esc(D.vue_densemble)}</p>`);
   let n=0;
   const sec=(title,body,t,grp)=>{
@@ -1574,6 +1577,7 @@ function audioDuration(blob){
 function askImportDetails(defTitle){
   return new Promise(res=>{
     const root=$('#modal-root');
+	const g=++_modalGen;
     root.innerHTML=`<div class="modal-overlay"></div>
       <div class="modal"><h3>Importer un audio</h3>
         <span class="field-label">Nom</span>
@@ -1594,7 +1598,8 @@ function askImportDetails(defTitle){
       m.querySelectorAll('#imp-seg .seg-btn').forEach(x=>x.classList.remove('active'));
       b.classList.add('active');type=b.dataset.type;
     }));
-    const close=v=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>root.innerHTML='',250);res(v)};
+    const close=v=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250);res(v)};
+    m.querySelector('[data-no]').onclick=()=>close(null);
     m.querySelector('[data-no]').onclick=()=>close(null);
     ov.onclick=()=>close(null);
     m.querySelector('[data-yes]').onclick=()=>{
@@ -2000,6 +2005,7 @@ function exportPDF(){
   let sel={resume:true,notions:false,transcript:false};
   try{sel=Object.assign(sel,JSON.parse(localStorage.getItem('echo_print_sel')||'{}'))}catch(e){}
   const root=$('#modal-root');
+  const g=++_modalGen;
   root.innerHTML=`<div class="modal-overlay"></div>
     <div class="modal"><h3>Enregistrer le PDF</h3>
     <p>Cochez les parties à inclure dans le fichier.</p>
@@ -2014,7 +2020,7 @@ function exportPDF(){
     <button class="btn-primary" data-yes="1" style="height:44px">${icon('download',16)}<span>Enregistrer le PDF</span></button></div></div>`;
   const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
   requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
-  const close=()=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>root.innerHTML='',250)};
+  const close=()=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250)};
   ov.onclick=close;
   m.querySelector('[data-no]').onclick=close;
   root.querySelectorAll('.check-row').forEach(b=>b.addEventListener('click',()=>{
@@ -2289,7 +2295,9 @@ function updateHomeBanner(){
     b.innerHTML=icon('key',18)+'<span><b>Activez la transcription et le résumé IA</b> — une clé Groq gratuite suffit (2 minutes, sans carte bancaire).</span>';
   }
 }
+let _settingsFrom='home';
 function openSettings(){
+  _settingsFrom=document.body.dataset.view;
   show('settings');
   const k=CFG.key;
   $('#key-input').value=localStorage.getItem('echo_groq_key')||'';
@@ -2331,7 +2339,10 @@ async function proceedPending(){
 function wireSettings(){
   $('#set-back').innerHTML=icon('chevl',18)+'<span>Retour</span>';
   $('#set-back').addEventListener('click',()=>{
+    const mv=$('#ai-model-input').value.trim();
+    if(mv&&mv!==AI.model)AI.model=mv;
     if(state.pending){const s=state.pending;state.pending=null;openDoc(s.id)}
+    else if(_settingsFrom==='doc'&&state.current)show('doc');
     else show('home');
   });
   $('#btn-eye').addEventListener('click',()=>{
