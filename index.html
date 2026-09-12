@@ -126,6 +126,14 @@ body[data-view="rec"] #topbar{display:none}
 .rec-stop{width:76px;height:76px;background:var(--orange);border-color:var(--orange);color:#1A0F04;box-shadow:0 14px 34px -14px rgba(255,122,26,.5)}
 .rec-btn[disabled]{opacity:.35;pointer-events:none}
 
+/* --- Écran noir de veille (enregistrement) --- */
+#dim{position:fixed;inset:0;z-index:80;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#dim.on{display:flex}
+#dim .dim-dot{width:12px;height:12px;border-radius:50%;background:var(--orange);animation:pulse 1.6s ease-in-out infinite}
+#dim .dim-t{font:600 21px var(--serif);color:#EDEEE8}
+#dim .dim-timer{font:500 14px var(--mono);color:rgba(237,238,232,.4);letter-spacing:.1em}
+#dim .dim-hint{font:400 10px var(--mono);color:rgba(237,238,232,.28);letter-spacing:.16em;text-transform:uppercase;margin-top:22px}
+
 /* ============================== DOCUMENT ============================== */
 .player{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:13px;padding:11px 2px;background:rgba(12,14,11,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);margin-bottom:8px}
 .pl-btn{flex:none;width:42px;height:42px;border-radius:50%;background:var(--orange);color:#1A0F04;display:flex;align-items:center;justify-content:center;transition:transform .12s}
@@ -139,6 +147,11 @@ body[data-view="rec"] #topbar{display:none}
 .doc-actions{display:flex;gap:9px;align-items:center;margin:14px 0 18px}
 .doc-actions .btn-primary{height:44px;flex:1}
 .doc-actions .btn-ghost{height:44px;padding:0 14px}
+.cta-transcribe{display:flex;gap:14px;align-items:center;justify-content:space-between;border:1.5px dashed var(--line-strong);border-radius:14px;padding:16px;margin:0 0 16px;background:var(--surface)}
+.cta-transcribe[hidden]{display:none}
+.cta-t{font:600 15px var(--sans)}
+.cta-d{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
+.cta-transcribe .btn-primary{height:44px;padding:0 16px;font-size:13.5px;flex:none}
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:32px 22px}
 .sheet-body{caret-color:var(--orange)}
 .editing .sheet-body{outline:1.5px dashed var(--line-strong);outline-offset:8px;border-radius:8px}
@@ -309,7 +322,7 @@ body[data-view="rec"] #topbar{display:none}
 @media print{
   @page{margin:14mm 13mm}
   html,body{background:#fff!important}
-  .no-print,#topbar,.player,.doc-actions,.raw-transcript,.doc-footer,#toast-root,.composer,.sec-tools,.setup-banner{display:none!important}
+  .no-print,#topbar,.player,.doc-actions,.cta-transcribe,.raw-transcript,.doc-footer,#toast-root,.composer,.sec-tools,.setup-banner,#dim{display:none!important}
   #app{padding:0;max-width:none}
   #app .view{display:none!important}
   #app #view-doc{display:block!important}
@@ -414,6 +427,13 @@ body[data-view="rec"] #topbar{display:none}
       <button class="btn-ghost" id="btn-edit"></button>
       <button class="btn-primary" id="btn-pdf"></button>
       <button class="btn-ghost" id="btn-menu" title="Plus d'actions"></button>
+    </div>
+    <div class="cta-transcribe no-print" id="cta-transcribe" hidden>
+      <div>
+        <p class="cta-t">Cet audio n'est pas encore transcrit</p>
+        <p class="cta-d">Whisper transcrit l'enregistrement, puis l'IA en rédige le résumé structuré.</p>
+      </div>
+      <button class="btn-primary" id="btn-transcribe"><span>Transcrire avec Whisper</span></button>
     </div>
     <article class="sheet"><div class="sheet-body" id="doc-body"></div></article>
     <div class="raw-transcript no-print">
@@ -521,6 +541,14 @@ body[data-view="rec"] #topbar{display:none}
 </main>
 
 <audio id="audio-el" preload="metadata" hidden></audio>
+
+<!-- Écran noir de veille pendant l'enregistrement -->
+<div id="dim" class="no-print">
+  <span class="dim-dot"></span>
+  <p class="dim-t">Enregistrement en cours</p>
+  <p class="dim-timer mono" id="dim-timer">00:00</p>
+  <p class="dim-hint">Touchez l'écran pour revenir</p>
+</div>
 
 <!-- Compositeur (progression) -->
 <div class="composer no-print" id="composer" hidden>
@@ -904,7 +932,7 @@ function buildDocHTML(P,s){
     <p class="doc-meta"><span>${esc(fmtDate(s.createdAt))}</span><span>${fmtDurLong(s.durationMs)}</span><span>${P.words} mots transcrits</span></p>
   </div>`);
   if(thin){
-    parts.push(`<p class="doc-lead" data-print-group="resume">Aucune transcription pour cet enregistrement. Transcrivez-le avec Whisper (menu ⋯), rédigez le résumé avec l'IA, ou saisissez le texte dans « Transcription brute » en bas de page puis régénérez.</p>`);
+    parts.push(`<p class="doc-lead" data-print-group="resume">Cet audio n'est pas encore transcrit. Touchez « Transcrire avec Whisper » ci-dessus pour lancer la transcription puis le résumé IA — ou saisissez le texte dans « Transcription brute » puis régénérez.</p>`);
   }else{
     parts.push(`<p class="doc-lead" data-print-group="resume">${esc(T)} enregistré le ${esc(fmtDate(s.createdAt))} — ${P.words} mots transcrits, ${P.sentences.length} phrases, ${P.sections.length} sections détectées. Notions dominantes : ${esc(P.notions.slice(0,4).map(n=>n.display).join(', ')||'—')}.</p>`);
   }
@@ -1103,7 +1131,7 @@ async function runAIDraft(sess){
     toast('Configurez une clé IA dans les réglages — votre clé Groq suffit.','warn',3400);
     state.pending=sess;openSettings();return false;
   }
-  if(!sess.segments||!sess.segments.length){toast('Transcrivez d\u2019abord l\u2019enregistrement (menu ⋯).','warn');return false}
+  if(!sess.segments||!sess.segments.length){toast('Transcrivez d\u2019abord l\u2019enregistrement — bouton sur le document ou menu ⋯.','warn');return false}
   composerShow();
   $('#composer-title').textContent='Rédaction IA du résumé';
   $('#composer-sub').textContent=sess.title;
@@ -1209,18 +1237,30 @@ async function composeAndShow(s){
 const GROQ_URL='https://api.groq.com/openai/v1/audio/transcriptions';
 const GROQ_MODELS='https://api.groq.com/openai/v1/models';
 const MAX_UPLOAD=24*1024*1024;
+/* Types MIME acceptés tels quels par Groq ; tout le reste est converti en WAV */
+const GROQ_MIMES=/^(audio\/(flac|mp3|mp4|mpeg|mpga|m4a|ogg|wav|webm|x-m4a|x-wav))$/i;
+const GROQ_MIME_FOR={mp3:'audio/mp3',m4a:'audio/m4a',mp4:'audio/mp4',ogg:'audio/ogg',wav:'audio/wav',flac:'audio/flac',webm:'audio/webm'};
 async function resolveAudioBlob(sess){
   if(state.current&&state.current.id===sess.id&&state.audioBlob)return state.audioBlob;
   const a=await dbGet('audio',sess.id);
   return a&&a.blob||null;
 }
-function blobExt(blob){
-  const t=String(blob.type||'');
-  if(t.includes('mp4')||t.includes('aac'))return 'm4a';
-  if(t.includes('ogg'))return 'ogg';
-  if(t.includes('wav'))return 'wav';
-  if(t.includes('mpeg'))return 'mp3';
-  if(t.includes('flac'))return 'flac';
+/* Extension d'envoi : déduite du type MIME, avec repli sur l'extension
+   du fichier importé (les types exotiques ou absents étaient mal étiquetés,
+   ce que Groq refuse). */
+function blobExt(blob,fallback){
+  const t=String(blob.type||'').toLowerCase();
+  if(/x-m4a|m4a|mp4|aac/.test(t))return 'm4a';
+  if(/ogg|oga|opus/.test(t))return 'ogg';
+  if(/wav/.test(t))return 'wav';
+  if(/mpeg|mp3/.test(t))return 'mp3';
+  if(/flac/.test(t))return 'flac';
+  if(/webm/.test(t))return 'webm';
+  if(fallback&&/^(mp3|m4a|aac|mp4|ogg|oga|opus|wav|flac|webm)$/.test(fallback)){
+    if(fallback==='oga'||fallback==='opus')return 'ogg';
+    if(fallback==='aac'||fallback==='mp4')return 'm4a';
+    return fallback;
+  }
   return 'webm';
 }
 async function blobToMono16k(blob){
@@ -1256,7 +1296,12 @@ function encodeWav(f32,sr){
 async function groqPostPart(part,key,sess,signal,onPhase){
   for(let attempt=0;;attempt++){
     const fd=new FormData();
-    fd.append('file',part.blob,'audio.'+part.ext);
+    /* Nom et type MIME envoyés de façon cohérente : c'est ce qui manquait
+       aux fichiers importés (conteneur mal étiqueté → refus Groq). */
+    const fname='audio.'+part.ext;
+    const ftype=GROQ_MIME_FOR[part.ext]||String(part.blob.type||'').split(';')[0]||'audio/webm';
+    try{fd.append('file',new File([part.blob],fname,{type:ftype}))}
+    catch(e){fd.append('file',part.blob,fname)}
     fd.append('model',CFG.model);
     fd.append('response_format','verbose_json');
     if(CFG.lang!=='auto')fd.append('language',CFG.lang);
@@ -1321,12 +1366,15 @@ async function runApiTranscription(sess){
   $('#api-cancel').onclick=()=>ctl.abort();
   let timer=null;
   try{
+    /* Format nativement accepté → envoi direct ; sinon conversion en WAV
+       (découpage automatique si le fichier dépasse la limite d'envoi). */
     let parts;
-    if(blob.size<=MAX_UPLOAD){
-      parts=[{blob,ext:blobExt(blob),offsetMs:0}];
+    const mime=String(blob.type||'').split(';')[0].trim().toLowerCase();
+    if(blob.size<=MAX_UPLOAD&&GROQ_MIMES.test(mime)){
+      parts=[{blob,ext:blobExt(blob,sess.audioExt),offsetMs:0}];
     }else{
-      $('#api-phase').textContent='Découpage';
-      $('#api-detail').textContent='Enregistrement long : découpage automatique en parties…';
+      $('#api-phase').textContent='Conversion de l\u2019audio';
+      $('#api-detail').textContent='Format non envoyable tel quel (ou fichier volumineux) : conversion automatique…';
       const pcm=await blobToMono16k(blob);
       const CH=5*60*16000;
       parts=[];
@@ -1555,6 +1603,9 @@ function askImportDetails(defTitle){
     };
   });
 }
+/* Import : la session créée EST l'objet courant (une seule copie),
+   ce qui garantit que la transcription et le bouton du document agissent
+   sur les mêmes données. */
 async function importAudioFile(file){
   if(!file)return;
   if(file.size>600*1024*1024){toast('Fichier trop volumineux (maximum ~600 Mo).','warn');return}
@@ -1566,20 +1617,31 @@ async function importAudioFile(file){
   const sess={id:uid(),title:det.title,type:det.type,createdAt:Date.now(),durationMs:durMs,segments:[],marks:[],docHTML:null,audioExt:extOf(file),imported:true};
   await dbPut('audio',{id:sess.id,blob:file});
   await dbPut('sessions',sess);
+  state.current=sess;
+  state.audioBlob=file;
+  if(state.audioUrl){URL.revokeObjectURL(state.audioUrl);state.audioUrl=null}
+  state.audioUrl=URL.createObjectURL(file);
+  $('#audio-el').src=state.audioUrl;
+  $('#player').hidden=false;
+  $('#view-doc').classList.remove('no-audio');
+  resetPlayerUI();
   await refreshHome();
   toast('Audio importé dans la bibliothèque.','ok');
   const go=await confirmDialog({
     title:'Transcrire et résumer maintenant ?',
-    body:'Whisper transcrira « '+sess.title+' » puis l\u2019IA en rédigera le résumé. Vous pouvez aussi le faire plus tard depuis le menu (⋯) de cet enregistrement.',
+    body:'Whisper transcrira « '+sess.title+' » puis l\u2019IA en rédigera le résumé. Vous pourrez aussi le faire plus tard avec le bouton « Transcrire avec Whisper » sur le document.',
     ok:'Transcrire et résumer',cancel:'Plus tard'
   });
-  await openDoc(sess.id);
   if(go){
-    const done=await runApiTranscription(sess);
+    const done=await runApiTranscription(state.current);
     if(done){
-      if(AI.ready)await runAIDraft(sess);
-      else await composeAndShow(sess);
+      if(AI.ready){const ok=await runAIDraft(state.current);if(!ok)await composeAndShow(state.current);}
+      else await composeAndShow(state.current);
+    }else{
+      await composeAndShow(state.current);
     }
+  }else{
+    await composeAndShow(state.current);
   }
 }
 
@@ -1591,6 +1653,8 @@ function renderDocBody(s){
   b.contentEditable='false';state.editing=false;
   $('#view-doc').classList.remove('editing');
   $('#btn-edit').innerHTML=icon('pen',15)+'<span>Éditer</span>';
+  /* Bouton de transcription visible tant que l'audio n'est pas transcrit */
+  $('#cta-transcribe').hidden=!!(s.segments&&s.segments.length)||!state.audioBlob;
   $$('#doc-body .sec').forEach(sec=>{
     if(sec.querySelector('.sec-tools'))return;
     const tools=document.createElement('div');
@@ -1642,7 +1706,7 @@ function pickMime(){
 }
 function nowMs(){return rec?rec.accum+(rec.activeStart!=null?performance.now()-rec.activeStart:0):0}
 
-/* --- Maintien en arrière-plan (écran éteint, Android/Chrome) --- */
+/* --- Maintien secondaire en arrière-plan (notification média) --- */
 let bgAudio=null,bgUrl=null;
 function startKeepAlive(title){
   try{
@@ -1661,6 +1725,38 @@ function stopKeepAlive(){
   try{if(bgAudio){bgAudio.pause();bgAudio.removeAttribute('src');bgAudio=null}}catch(e){}
   if(bgUrl){URL.revokeObjectURL(bgUrl);bgUrl=null}
   if('mediaSession' in navigator){try{navigator.mediaSession.metadata=null}catch(e){}}
+}
+
+/* --- Écran toujours allumé (Wake Lock) --- */
+let wl=null;
+async function grabWakeLock(){try{wl=await (navigator.wakeLock&&navigator.wakeLock.request('screen'))}catch(e){}}
+function releaseWakeLock(){try{wl&&wl.release()}catch(e){}wl=null}
+
+/* --- Écran noir de veille après 30 s d'inactivité --- */
+const DIM_DELAY=30000;
+let dimTimer=null;
+function dimShow(){
+  if(!rec||rec.status!=='recording')return;
+  $('#dim').classList.add('on');
+  $('#dim-timer').textContent=fmtClock(nowMs());
+}
+function dimArm(){
+  clearTimeout(dimTimer);dimTimer=null;
+  if(!rec||rec.status!=='recording')return;
+  dimTimer=setTimeout(dimShow,DIM_DELAY);
+}
+function dimOff(){
+  clearTimeout(dimTimer);dimTimer=null;
+  $('#dim').classList.remove('on');
+}
+function wireDim(){
+  $('#dim').addEventListener('click',()=>{dimOff();dimArm()});
+  ['pointerdown','touchstart','mousedown','keydown'].forEach(ev=>
+    document.addEventListener(ev,()=>{
+      if(!rec||rec.status!=='recording')return;
+      if($('#dim').classList.contains('on'))dimOff();
+      dimArm();
+    },{passive:true}));
 }
 
 async function startSession(){
@@ -1694,8 +1790,12 @@ async function startSession(){
   show('rec');vibrate(12);
   requestAnimationFrame(()=>{fitCanvas()});
   frame();
+  /* L'écran reste allumé pendant tout l'enregistrement (l'onglet ne peut
+     plus être gelé), avec bascule sur écran noir après 30 s d'inactivité. */
+  grabWakeLock();
   startKeepAlive(title);
-  toast('Enregistrement démarré — vous pouvez éteindre l\u2019écran.','info',3000);
+  dimOff();dimArm();
+  toast('Enregistrement démarré — écran noir automatique après 30 s.','info',3000);
   btn.disabled=false;
 }
 function setStateUI(paused){
@@ -1717,6 +1817,7 @@ function frame(){
   if(!rec||rec.status==='stopped')return;
   rec.lastFrame=performance.now();
   rec.raf=requestAnimationFrame(frame);
+  if($('#dim').classList.contains('on'))$('#dim-timer').textContent=fmtClock(nowMs());
   $('#rec-timer').textContent=fmtClock(nowMs());
   if(rec.analyser&&rec.status==='recording'){
     rec.analyser.getByteTimeDomainData(rec.buf);
@@ -1751,9 +1852,11 @@ function setPause(p){
     if(rec.mr&&rec.mr.state==='recording')rec.mr.pause();
     rec.status='paused';
     rec.accum+=performance.now()-rec.activeStart;rec.activeStart=null;
+    dimOff();
   }else{
     if(rec.mr&&rec.mr.state==='paused')rec.mr.resume();
     rec.status='recording';rec.activeStart=performance.now();
+    dimArm();
   }
   setStateUI(p);
 }
@@ -1764,9 +1867,11 @@ async function finalize(){
   $('#btn-pause').disabled=true;$('#btn-stop').disabled=true;$('#btn-mark').disabled=true;
   cancelAnimationFrame(rec.raf);
   const mr=rec.mr,ctx=rec.ctx;
-  try{if(ctx)ctx.close().catch(()=>{})}catch(e){}
+  try{if(ctx){const p=ctx.close();if(p&&p.catch)p.catch(()=>{})}}catch(e){}
   rec.stream.getTracks().forEach(t=>t.stop());
   stopKeepAlive();
+  dimOff();
+  releaseWakeLock();
   const {title,type,mime}=rec;
   const chunks=rec.chunks,marks=rec.marks;
   rec=null;
@@ -1810,6 +1915,8 @@ function discardRecording(){
   try{if(rec.mr&&rec.mr.state!=='inactive')rec.mr.stop()}catch(e){}
   rec.stream.getTracks().forEach(t=>t.stop());
   stopKeepAlive();
+  dimOff();
+  releaseWakeLock();
   rec=null;
   show('home');
   toast('Enregistrement abandonné.','info');
@@ -1817,11 +1924,12 @@ function discardRecording(){
 document.addEventListener('visibilitychange',()=>{
   if(!rec||rec.status==='stopped')return;
   if(document.visibilityState==='visible'){
+    grabWakeLock();
     fitCanvas();
     if(performance.now()-(rec.lastFrame||0)>2500){cancelAnimationFrame(rec.raf);frame();}
     if(rec.wasHidden){
       rec.wasHidden=false;
-      toast('L\u2019enregistrement a continué en arrière-plan — '+fmtClock(nowMs())+' au compteur.','info',3200);
+      toast('L\u2019enregistrement a continué — '+fmtClock(nowMs())+' au compteur.','info',3200);
     }
   }else{
     rec.wasHidden=true;
@@ -1846,7 +1954,7 @@ function fixDuration(){
 function wirePlayer(){
   const a=$('#audio-el');
   a.addEventListener('loadedmetadata',()=>{
-    if(isFinite(a.duration)&&a.duration>0)$('#pl-dur').textContent=fmtClock(a.duration*1000);
+    if(isfiniteSupported(a))$('#pl-dur').textContent=fmtClock(a.duration*1000);
     else fixDuration();
   });
   a.addEventListener('timeupdate',()=>{
@@ -1870,6 +1978,7 @@ function wirePlayer(){
     $('#pl-speed').textContent=speeds[si].toString().replace('.',',')+'×';
   });
 }
+function isfiniteSupported(a){return isFinite(a.duration)&&a.duration>0}
 
 /* ==================== EXPORT PDF (FICHIER DIRECT) ==================== */
 const PRINT_GROUPS=[
@@ -1915,8 +2024,6 @@ function exportPDF(){
   m.querySelector('[data-yes]').onclick=async()=>{
     if(!sel.resume&&!sel.notions&&!sel.transcript){toast('Cochez au moins une partie.','warn');return}
     localStorage.setItem('echo_print_sel',JSON.stringify(sel));
-    const yes=m.querySelector('[data-yes]');
-    yes.disabled=true;
     close();
     await doSavePDF(sel);
   };
@@ -1963,13 +2070,11 @@ function buildPDF(sel,s){
   const restText=el=>{const c=el.cloneNode(true);c.querySelectorAll('.kt,.tstamp,.sec-tools').forEach(n=>n.remove());return (c.textContent||'').replace(/\s+/g,' ').trim()};
   const root=$('#doc-body');
   const keep=el=>{const g=el.closest('[data-print-group]');return !g||!!sel[g.dataset.printGroup]};
-  /* En-tête */
   para('ÉCHO — DOCUMENT DE SYNTHÈSE',{size:7.5,color:ORANGE,style:'bold',gap:6,lh:1.3});
   para(s.title,{size:21,style:'bold',lh:1.25,gap:6});
   para(fmtDate(s.createdAt)+'  ·  '+fmtDurLong(s.durationMs),{size:8,color:GRAY,gap:16});
   const lead=root.querySelector('.doc-lead');
   if(lead&&keep(lead))para(lead.textContent.trim(),{size:11,style:'italic',color:'#44443E',lh:1.55,gap:14});
-  /* Sections */
   root.querySelectorAll('.sec').forEach(sec=>{
     if(!keep(sec))return;
     if(y>H-M-70){doc.addPage();y=M}
@@ -2006,13 +2111,11 @@ function buildPDF(sel,s){
     });
     y+=12;
   });
-  /* Colophon */
   if(y>H-M-30)doc.addPage(),y=M;
   doc.setDrawColor(200);doc.line(M,y,W-M,y);y+=14;
   para('Généré par Écho — synthèse "'+PRINT_GROUPS.filter(g=>sel[g.k]).map(g=>g.label).join(' + ')+'". Les horodatages renvoient à l\u2019enregistrement audio d\u2019origine.',{size:7.5,color:GRAY,gap:0,lh:1.5});
   doc.save(slug(s.title)+'.pdf');
 }
-/* Repli : impression navigateur si jsPDF indisponible */
 function doPrint(sel){
   const hidden=[];
   $$('#doc-body [data-print-group]').forEach(el=>{
@@ -2368,7 +2471,7 @@ function wire(){
   $('#raw-details').querySelector('summary').insertAdjacentHTML('beforeend',icon('chevd',16));
   $('#ai-btn-models').innerHTML=icon('refresh',14)+'<span>Charger les modèles disponibles</span>';
   $('#btn-import').innerHTML=icon('upload',17)+'<span>Importer un audio</span>';
-  $('#bg-hint').innerHTML=icon('moon',15)+'<span>Vous pouvez éteindre l\u2019écran : l\u2019enregistrement continue en arrière-plan (Android / Chrome).</span>';
+  $('#bg-hint').innerHTML=icon('moon',15)+'<span>L\u2019écran reste allumé pendant l\u2019enregistrement ; après 30 s sans interaction, il passe au noir (touchez l\u2019écran pour revenir).</span>';
   $('#privacy-hint').innerHTML=icon('lock',15)+'<span>L\u2019audio et les documents restent sur votre appareil. La transcription et le résumé IA passent par le fournisseur choisi, uniquement le temps du traitement.</span>';
   const segs={cours:['book','Cours'],reunion:['users','Réunion'],conversation:['chat','Conversation']};
   [['#sg-c','cours'],['#sg-r','reunion'],['#sg-v','conversation']].forEach(([sel,t])=>{
@@ -2384,6 +2487,14 @@ function wire(){
     const f=e.target.files&&e.target.files[0];
     e.target.value='';
     if(f)importAudioFile(f);
+  });
+  /* Bouton de transcription sur le document (audio non transcrit) */
+  $('#btn-transcribe').addEventListener('click',async()=>{
+    const s=state.current;if(!s)return;
+    const done=await runApiTranscription(s);
+    if(!done)return;
+    if(AI.ready){const ok=await runAIDraft(s);if(!ok)await composeAndShow(s);}
+    else await composeAndShow(s);
   });
   $('#btn-pause').addEventListener('click',()=>setPause(rec&&rec.status==='paused'?false:true));
   $('#btn-stop').addEventListener('click',finalize);
@@ -2510,7 +2621,7 @@ setInterval(()=>{const i=$('#rec-title');if(i&&!i.value)i.placeholder=SUGGEST[su
 
 /* ==================== DÉMARRAGE ==================== */
 (async function init(){
-  wire();wireLib();wirePlayer();wireSettings();
+  wire();wireLib();wirePlayer();wireSettings();wireDim();
   setupSW();
   updateApiPill();updateHomeBanner();
   await refreshHome();
