@@ -3,333 +3,326 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F1ECE2">
+<meta name="theme-color" content="#0C0E0B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Écho">
 <title>Écho — enregistreur &amp; carnet</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="apple-mobile-web-app-title" content="Écho">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ============================== BASE ============================== */
+/* ============================== BASE — thème sombre, orange & vert ============================== */
 :root{
-  --paper:#F1ECE2; --sheet:#FBF8F1; --ink:#211C13; --ink-soft:#6B6355;
-  --line:rgba(33,28,19,.14); --line-strong:rgba(33,28,19,.34);
-  --red:#D8391E; --red-deep:#A2260F; --red-bright:#F0603C;
-  --red-tint:rgba(216,57,30,.06); --ok:#2F5D3A;
+  --bg:#0C0E0B; --surface:#141712; --surface-2:#1A1E18;
+  --text:#EDEEE8; --muted:#969C8F;
+  --line:rgba(237,238,232,.09); --line-strong:rgba(237,238,232,.22);
+  --orange:#FF7A1A; --orange-deep:#E8640C; --orange-dim:rgba(255,122,26,.12);
+  --green:#4ADE80; --green-deep:#22C55E; --green-dim:rgba(74,222,128,.12);
   --serif:'Fraunces',Georgia,serif; --sans:'Archivo',sans-serif; --mono:'IBM Plex Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
-body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
-body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.55;mix-blend-mode:multiply;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.045'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;touch-action:manipulation}
-button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--red);outline-offset:2px}
-a{color:var(--red-deep)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+a{color:var(--green)}
 .mono{font-family:var(--mono)}
-#app{max-width:760px;margin:0 auto;padding:0 18px 90px;position:relative;z-index:2}
+#app{max-width:720px;margin:0 auto;padding:0 18px 90px;position:relative}
 .view{display:none}
-.view.active{display:block;animation:viewIn .32s cubic-bezier(.22,.8,.3,1)}
+.view.active{display:block;animation:viewIn .3s cubic-bezier(.22,.8,.3,1)}
 @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.reveal{animation:rise .55s cubic-bezier(.22,.8,.3,1) both;animation-delay:calc(var(--i,0)*.085s)}
-@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-.field-label{display:block;font:600 10px var(--mono);letter-spacing:.17em;text-transform:uppercase;color:var(--ink-soft)}
-.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:9px;border:1px solid var(--line);color:var(--ink);background:var(--sheet);transition:background .15s}
-.icon-btn:active{background:var(--red-tint)}
+.reveal{animation:rise .5s cubic-bezier(.22,.8,.3,1) both;animation-delay:calc(var(--i,0)*.08s)}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.field-label{display:block;font:600 10px var(--mono);letter-spacing:.17em;text-transform:uppercase;color:var(--muted)}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);color:var(--text);background:var(--surface);transition:background .15s}
+.icon-btn:active{background:var(--orange-dim)}
 
 /* ============================== TOPBAR ============================== */
-#topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;padding:13px 18px;background:rgba(241,236,226,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);max-width:760px;margin:0 auto}
+#topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;padding:13px 18px;background:rgba(12,14,11,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);max-width:720px;margin:0 auto}
 body[data-view="rec"] #topbar{display:none}
 .brand{display:flex;align-items:center;gap:9px;cursor:pointer}
-.brand-name{font:700 20px var(--serif);letter-spacing:-.01em}
-.brand svg{color:var(--red-deep)}
-.api-pill{display:inline-flex;align-items:center;gap:6px;font:600 9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ok);border:1px solid rgba(47,93,58,.4);border-radius:999px;padding:5px 10px;white-space:nowrap;margin-left:auto;cursor:pointer;background:var(--sheet)}
-.api-pill .edot{width:6px;height:6px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
+.brand-name{font:700 19px var(--serif);letter-spacing:-.01em}
+.brand svg{color:var(--orange)}
+.api-pill{display:inline-flex;align-items:center;gap:6px;font:600 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--green);border:1px solid rgba(74,222,128,.35);border-radius:999px;padding:5px 10px;white-space:nowrap;margin-left:auto;cursor:pointer;background:var(--surface)}
+.api-pill .edot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+
+/* ============================== BOUTONS ============================== */
+.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 22px;background:var(--orange);color:#1A0F04;border:1.5px solid var(--orange);border-radius:11px;font:600 15px var(--sans);transition:transform .12s,filter .15s}
+.btn-primary:active{transform:scale(.97);filter:brightness(1.08)}
+.btn-primary:disabled{opacity:.5}
+.btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 16px;background:transparent;border:1.5px solid var(--line-strong);border-radius:11px;font:600 14px var(--sans);color:var(--text);transition:background .15s}
+.btn-ghost:active{background:var(--orange-dim)}
+.btn-danger{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;background:var(--orange-deep);border:1.5px solid var(--orange-deep);color:#1A0F04;border-radius:11px;font:600 14px var(--sans)}
+.rec-dot{width:9px;height:9px;border-radius:50%;background:var(--orange);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.78)}}
 
 /* ============================== ACCUEIL ============================== */
-.hero{padding:36px 2px 8px}
-.hero-kicker{font:600 10.5px var(--mono);letter-spacing:.22em;color:var(--red-deep);text-transform:uppercase}
-.hero-title{font:600 clamp(34px,9vw,50px)/1.06 var(--serif);letter-spacing:-.015em;margin:14px 0 14px}
-.hero-title em{font-style:italic;color:var(--red-deep)}
-.hero-sub{color:var(--ink-soft);font-size:15.5px;line-height:1.6;max-width:46ch}
-.new-rec{margin-top:26px;background:var(--sheet);border:1.5px solid var(--ink);border-radius:14px;padding:22px 20px}
-.new-rec input[type=text]{display:block;width:100%;margin-top:10px;background:transparent;border:none;border-bottom:1.5px solid var(--line-strong);padding:8px 2px 10px;font:500 21px var(--serif);color:var(--ink);border-radius:0}
-.new-rec input::placeholder{color:rgba(107,99,85,.55);font-weight:400}
-.seg{display:flex;margin-top:16px;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden}
-.seg-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 4px;font:600 13px var(--sans);letter-spacing:.02em;color:var(--ink-soft);transition:background .15s,color .15s}
-.seg-btn + .seg-btn{border-left:1.5px solid var(--ink)}
-.seg-btn.active{background:var(--ink);color:var(--paper)}
-.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:52px;padding:0 22px;background:var(--ink);color:var(--paper);border:1.5px solid var(--ink);border-radius:10px;font:600 15px var(--sans);transition:transform .12s}
-.btn-primary:active{transform:scale(.97)}
-.btn-primary:disabled{opacity:.5}
-.btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 16px;background:transparent;border:1.5px solid var(--line-strong);border-radius:10px;font:600 14px var(--sans);transition:background .15s}
-.btn-ghost:active{background:var(--red-tint)}
-.btn-danger{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;background:var(--red-deep);border:1.5px solid var(--red-deep);color:#fff;border-radius:10px;font:600 14px var(--sans)}
-.rec-dot{width:9px;height:9px;border-radius:50%;background:var(--red);animation:pulse 1.6s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+.hero{padding:38px 2px 10px}
+.hero-kicker{font:600 10px var(--mono);letter-spacing:.22em;color:var(--orange);text-transform:uppercase}
+.hero-title{font:600 clamp(32px,8.5vw,46px)/1.07 var(--serif);letter-spacing:-.015em;margin:14px 0 12px}
+.hero-title em{font-style:italic;color:var(--orange)}
+.hero-sub{color:var(--muted);font-size:15px;line-height:1.6;max-width:44ch}
+.new-rec{margin-top:26px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 20px}
+.new-rec input[type=text]{display:block;width:100%;margin-top:10px;background:transparent;border:none;border-bottom:1.5px solid var(--line-strong);padding:8px 2px 10px;font:500 20px var(--serif);color:var(--text);border-radius:0}
+.new-rec input::placeholder{color:rgba(150,156,143,.55);font-weight:400}
+.seg{display:flex;margin-top:16px;border:1.5px solid var(--line-strong);border-radius:11px;overflow:hidden}
+.seg-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 4px;font:600 13px var(--sans);color:var(--muted);transition:background .15s,color .15s}
+.seg-btn + .seg-btn{border-left:1.5px solid var(--line-strong)}
+.seg-btn.active{background:var(--orange);color:#1A0F04}
 #btn-start{width:100%;margin-top:18px}
-.hint{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:12px;line-height:1.5;color:var(--ink-soft)}
-.hint svg{flex:none;margin-top:1px}
-.setup-banner{margin-top:16px;display:flex;gap:12px;align-items:flex-start;border:1.5px dashed var(--line-strong);border-radius:12px;padding:14px 16px;font-size:13.5px;line-height:1.5;color:var(--ink-soft);cursor:pointer;background:transparent;text-align:left;width:100%}
-.setup-banner b{color:var(--ink)}
-.setup-banner svg{flex:none;margin-top:1px;color:var(--red-deep)}
-.setup-banner.ready{border-style:solid;border-color:rgba(47,93,58,.35);color:var(--ok)}
-.setup-banner.ready svg{color:var(--ok)}
-.library{margin-top:44px}
-.lib-head{display:flex;align-items:baseline;gap:12px;padding-bottom:8px}
-.lib-head h2{font:600 23px var(--serif)}
-#lib-count{font:500 11px var(--mono);color:var(--ink-soft);letter-spacing:.1em}
-.lib-empty{margin-top:8px;border:1.5px dashed var(--line-strong);border-radius:12px;padding:26px 20px;color:var(--ink-soft);font-size:14px;line-height:1.55;display:flex;gap:14px;align-items:flex-start}
+.hint{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:12px;line-height:1.5;color:var(--muted)}
+.hint svg{flex:none;margin-top:1px;color:var(--green)}
+.import-box{margin-top:14px;border:1.5px dashed var(--line-strong);border-radius:16px;padding:20px;text-align:center}
+.import-btn{display:inline-flex;align-items:center;gap:9px;height:46px;padding:0 20px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:11px;color:var(--text);font:600 14px var(--sans);transition:border-color .15s}
+.import-btn:active{border-color:var(--green)}
+.import-note{margin-top:10px;font-size:12px;color:var(--muted)}
+.setup-banner{margin-top:16px;display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:13.5px;line-height:1.5;color:var(--muted);cursor:pointer;background:var(--surface);text-align:left;width:100%}
+.setup-banner b{color:var(--text)}
+.setup-banner svg{flex:none;margin-top:1px;color:var(--orange)}
+.setup-banner.ready{border-color:rgba(74,222,128,.3);color:var(--green)}
+.setup-banner.ready svg{color:var(--green)}
+.library{margin-top:46px}
+.lib-head{display:flex;align-items:baseline;gap:12px;padding-bottom:10px}
+.lib-head h2{font:600 22px var(--serif)}
+#lib-count{font:500 11px var(--mono);color:var(--muted);letter-spacing:.1em}
+.lib-empty{border:1.5px dashed var(--line-strong);border-radius:14px;padding:26px 20px;color:var(--muted);font-size:14px;line-height:1.55;display:flex;gap:14px;align-items:flex-start}
 .lib-empty svg{flex:none;margin-top:2px}
 .lib-item{display:flex;align-items:center;gap:12px;padding:16px 2px;border-top:1px solid var(--line);cursor:pointer}
 .lib-item:first-child{border-top:none}
 .lib-main{flex:1;min-width:0}
-.lib-title{font:600 17.5px var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lib-meta{font:500 10.5px var(--mono);color:var(--ink-soft);letter-spacing:.06em;margin-top:3px;text-transform:uppercase}
-.lib-type{flex:none;font:600 9.5px var(--mono);letter-spacing:.14em;border:1px solid var(--line-strong);border-radius:999px;padding:4px 8px;color:var(--ink-soft)}
+.lib-title{font:600 17px var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lib-meta{font:500 10px var(--mono);color:var(--muted);letter-spacing:.06em;margin-top:3px;text-transform:uppercase}
+.lib-type{flex:none;font:600 9px var(--mono);letter-spacing:.14em;border:1px solid var(--line-strong);border-radius:999px;padding:4px 8px;color:var(--muted)}
 .lib-del{flex:none;width:34px;height:34px;border-color:var(--line)}
+.lib-del:active{color:var(--orange)}
 .lib-confirm{flex:1;display:flex;align-items:center;gap:10px;font-size:14px}
 .lib-confirm .q{font-style:italic;font-family:var(--serif)}
 .btn-mini{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--line-strong);border-radius:8px;font:600 12px var(--sans)}
-.btn-mini.danger{color:#fff;background:var(--red-deep);border-color:var(--red-deep)}
-
-/* ============================== RÉGLAGES ============================== */
-.set-top{display:flex;align-items:center;gap:12px;padding:26px 0 4px}
-.set-h{font:600 clamp(28px,7vw,36px)/1.1 var(--serif);letter-spacing:-.015em;margin:14px 0 10px}
-.set-intro{font-size:15px;line-height:1.62;color:var(--ink-soft);max-width:60ch}
-.set-group{background:var(--sheet);border:1.5px solid var(--ink);border-radius:14px;padding:20px;margin-top:20px}
-.set-title{font:600 19px var(--serif)}
-.howto{margin:12px 0 4px;padding-left:20px;display:grid;gap:9px}
-.howto li{font-size:13.5px;line-height:1.55;color:var(--ink-soft)}
-.howto li::marker{font:600 11px var(--mono);color:var(--red-deep)}
-.howto a{font-weight:600}
-.key-row{display:flex;gap:9px;margin-top:16px}
-.key-input{flex:1;min-width:0;height:48px;border:1.5px solid var(--line-strong);border-radius:10px;background:transparent;padding:0 14px;font:500 13px var(--mono);color:var(--ink)}
-.key-input:focus{border-color:var(--red);outline:none}
-.key-input::placeholder{color:rgba(107,99,85,.5)}
-.btn-eye{width:48px;height:48px;flex:none;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--sheet);display:inline-flex;align-items:center;justify-content:center;color:var(--ink-soft)}
-.key-actions{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
-.key-actions .btn-primary{height:44px;padding:0 18px;font-size:14px}
-.link-btn{background:none;border:none;font:600 13px var(--sans);color:var(--ink-soft);text-decoration:underline;text-underline-offset:3px;padding:6px 2px}
-.set-status{margin-top:12px;font:500 12px var(--mono);letter-spacing:.04em;min-height:16px;line-height:1.5}
-.set-status.ok{color:var(--ok)}
-.set-status.err{color:var(--red-deep)}
-.model-cards{display:grid;gap:10px;margin-top:14px}
-.prov-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
-.model-card{border:1.5px solid var(--line-strong);border-radius:11px;padding:13px 15px;text-align:left;background:var(--paper)}
-.model-card.active{border-color:var(--ink);background:var(--ink);color:var(--paper)}
-.model-name{display:block;font:600 15px var(--sans)}
-.model-desc{display:block;font-size:12px;margin-top:3px;color:var(--ink-soft)}
-.model-card.active .model-desc{color:rgba(241,236,226,.7)}
-.model-input{width:100%;height:44px;margin-top:8px;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--paper);padding:0 12px;font:500 13px var(--mono);color:var(--ink)}
-.model-input:focus{border-color:var(--red);outline:none}
-.model-tools{margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.model-tools .btn-ghost{height:40px;font-size:12.5px;padding:0 12px}
-.model-hint{font-size:11.5px;color:var(--ink-soft);line-height:1.45;flex:1;min-width:180px}
-.lang-row{margin-top:16px}
-.lang-select{width:100%;height:46px;margin-top:8px;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--paper);padding:0 12px;font:500 14px var(--sans);color:var(--ink)}
-.set-privacy{margin-top:18px;font-size:12px;line-height:1.6;color:var(--ink-soft);display:flex;gap:8px}
-.set-privacy svg{flex:none;margin-top:1px}
+.btn-mini.danger{color:#1A0F04;background:var(--orange-deep);border-color:var(--orange-deep)}
 
 /* ============================== ENREGISTREMENT ============================== */
-#view-rec.active{display:flex;flex-direction:column;min-height:calc(100dvh - 120px);padding-top:6px}
-.rec-top{display:flex;align-items:center;gap:12px;padding:10px 0}
+#view-rec.active{display:flex;flex-direction:column;min-height:100dvh;padding-top:6px}
+.rec-top{display:flex;align-items:center;gap:12px;padding:14px 0 6px}
 .rec-name-wrap{flex:1;min-width:0}
 #rec-name{font:600 19px var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.type-badge{font:600 9.5px var(--mono);letter-spacing:.14em;border:1px solid var(--line-strong);border-radius:999px;padding:4px 9px;color:var(--ink-soft)}
-.rec-clock{display:flex;align-items:baseline;gap:16px;padding:10px 2px 14px}
-#rec-timer{font:500 clamp(42px,12vw,56px)/1 var(--mono);font-variant-numeric:tabular-nums}
-.rec-state{display:flex;align-items:center;gap:7px;font:600 10.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
-.rec-state .dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.3s ease-in-out infinite}
-.rec-state.paused .dot{background:var(--ink-soft);animation:none}
-.wave-wrap{border:1px solid var(--line);border-radius:12px;background:var(--sheet);padding:10px 8px}
-#wave{display:block;width:100%;height:92px}
-.rec-live{margin-top:18px;flex:1;display:flex;flex-direction:column;min-height:110px}
-.live-head{display:flex;align-items:center;gap:10px}
-.live-head .field-label{flex:none}
-.engine-chip{display:inline-flex;align-items:center;gap:6px;font:600 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:4px 9px;background:var(--sheet);margin-left:auto;white-space:nowrap}
-#live-words{font:500 10.5px var(--mono);color:var(--ink-soft);letter-spacing:.08em;white-space:nowrap}
-.engine-chip .edot{width:6px;height:6px;border-radius:50%;background:var(--ink-soft);flex:none}
-.engine-chip.on{color:var(--ok);border-color:rgba(47,93,58,.35)}
-.engine-chip.on .edot{background:var(--ok);animation:pulse 1.6s infinite}
-.engine-chip.err{color:var(--red-deep);border-color:rgba(216,57,30,.4)}
-.engine-chip.err .edot{background:var(--red)}
-.live-text{margin-top:10px;padding:13px 15px;background:var(--sheet);border:1px solid var(--line);border-radius:10px;min-height:88px;max-height:24vh;overflow-y:auto;font:400 16px/1.62 var(--serif)}
-.live-interim{color:rgba(107,99,85,.6);font-style:italic}
-.live-idle{color:rgba(107,99,85,.55);font-style:italic;font-size:14.5px}
-.bg-hint{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:12px;line-height:1.5;color:var(--ink-soft)}
-.bg-hint svg{flex:none;margin-top:1px;color:var(--ok)}
-.rec-controls{position:sticky;bottom:0;display:flex;align-items:center;justify-content:center;gap:30px;padding:18px 0 calc(20px + env(safe-area-inset-bottom));background:var(--paper);border-top:1px solid var(--line);margin-top:14px}
-.rec-btn{width:58px;height:58px;border-radius:50%;border:1.5px solid var(--ink);display:flex;align-items:center;justify-content:center;transition:transform .12s}
+.type-badge{font:600 9px var(--mono);letter-spacing:.14em;border:1px solid var(--line-strong);border-radius:999px;padding:4px 9px;color:var(--muted)}
+.rec-clock{display:flex;align-items:baseline;justify-content:space-between;padding:22px 2px 20px}
+#rec-timer{font:500 clamp(52px,15vw,76px)/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--orange)}
+.rec-state{display:flex;align-items:center;gap:7px;font:600 10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.rec-state .dot{width:8px;height:8px;border-radius:50%;background:var(--orange);animation:pulse 1.3s ease-in-out infinite}
+.rec-state.paused .dot{background:var(--muted);animation:none}
+.wave-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;border:1px solid var(--line);border-radius:16px;background:var(--surface);padding:12px 10px;min-height:150px}
+#wave{display:block;width:100%;height:140px}
+.bg-hint{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:12px;line-height:1.5;color:var(--muted)}
+.bg-hint svg{flex:none;margin-top:1px;color:var(--green)}
+.rec-controls{position:sticky;bottom:0;display:flex;align-items:center;justify-content:center;gap:34px;padding:20px 0 calc(24px + env(safe-area-inset-bottom));background:var(--bg);margin-top:14px}
+.rec-btn{width:58px;height:58px;border-radius:50%;border:1.5px solid var(--line-strong);display:flex;align-items:center;justify-content:center;color:var(--text);transition:transform .12s}
 .rec-btn:active{transform:scale(.93)}
-.rec-stop{width:74px;height:74px;background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 14px 30px -14px rgba(216,57,30,.65)}
+.rec-stop{width:76px;height:76px;background:var(--orange);border-color:var(--orange);color:#1A0F04;box-shadow:0 14px 34px -14px rgba(255,122,26,.5)}
 .rec-btn[disabled]{opacity:.35;pointer-events:none}
 
 /* ============================== DOCUMENT ============================== */
-.player{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:13px;padding:11px 2px;background:rgba(241,236,226,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-bottom:6px}
-.pl-btn{flex:none;width:42px;height:42px;border-radius:50%;background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:center;transition:transform .12s}
+.player{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:13px;padding:11px 2px;background:rgba(12,14,11,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);margin-bottom:8px}
+.pl-btn{flex:none;width:42px;height:42px;border-radius:50%;background:var(--orange);color:#1A0F04;display:flex;align-items:center;justify-content:center;transition:transform .12s}
 .pl-btn:active{transform:scale(.92)}
 .pl-mid{flex:1;min-width:0}
-.pl-times{display:flex;justify-content:space-between;font:500 10.5px var(--mono);color:var(--ink-soft);margin-bottom:6px;letter-spacing:.06em}
+.pl-times{display:flex;justify-content:space-between;font:500 10px var(--mono);color:var(--muted);margin-bottom:6px;letter-spacing:.06em}
 .pl-track{height:4px;border-radius:3px;background:var(--line);position:relative;cursor:pointer}
-.pl-fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:3px;background:var(--red)}
-.pl-fill::after{content:"";position:absolute;right:-5px;top:50%;width:11px;height:11px;border-radius:50%;background:var(--red);transform:translate(0,-50%);border:2px solid var(--sheet)}
-.pl-speed{flex:none;min-width:46px;height:34px;border:1px solid var(--line-strong);border-radius:8px;font:600 12px var(--mono);color:var(--ink)}
+.pl-fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:3px;background:var(--orange)}
+.pl-fill::after{content:"";position:absolute;right:-5px;top:50%;width:11px;height:11px;border-radius:50%;background:var(--orange);transform:translate(0,-50%);border:2px solid var(--bg)}
+.pl-speed{flex:none;min-width:46px;height:34px;border:1px solid var(--line-strong);border-radius:8px;font:600 12px var(--mono);color:var(--text)}
 .doc-actions{display:flex;gap:9px;align-items:center;margin:14px 0 18px}
 .doc-actions .btn-primary{height:44px;flex:1}
 .doc-actions .btn-ghost{height:44px;padding:0 14px}
-.sheet{position:relative;background:var(--sheet);border:1px solid var(--line);padding:30px 20px 30px 36px}
-.sheet::before{content:"";position:absolute;left:17px;top:0;bottom:0;width:1.5px;background:rgba(216,57,30,.34)}
-.sheet-body{caret-color:var(--red)}
-.editing .sheet-body{outline:1.5px dashed var(--line-strong);outline-offset:8px}
-.editing .sheet-body:focus-within{outline-color:var(--red)}
-.doc-eyebrow{font:600 10px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--red-deep)}
-.doc-title{font:600 clamp(26px,7vw,34px)/1.12 var(--serif);letter-spacing:-.012em;margin:9px 0 12px}
-.doc-meta{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 10.5px var(--mono);color:var(--ink-soft);letter-spacing:.09em;text-transform:uppercase}
-.doc-lead{font:italic 400 16.5px/1.65 var(--serif);color:var(--ink-soft);margin-top:18px}
-.sec{border-top:1px solid var(--line);padding:22px 0 20px;margin-top:2px}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:32px 22px}
+.sheet-body{caret-color:var(--orange)}
+.editing .sheet-body{outline:1.5px dashed var(--line-strong);outline-offset:8px;border-radius:8px}
+.editing .sheet-body:focus-within{outline-color:var(--orange)}
+.doc-eyebrow{font:600 9.5px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--orange)}
+.doc-title{font:600 clamp(25px,6.5vw,32px)/1.12 var(--serif);letter-spacing:-.012em;margin:9px 0 12px}
+.doc-meta{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 10px var(--mono);color:var(--muted);letter-spacing:.09em;text-transform:uppercase}
+.doc-lead{font:italic 400 16px/1.65 var(--serif);color:var(--muted);margin-top:18px}
+.sec{border-top:1px solid var(--line);padding:22px 0 20px}
 .doc-head + .sec{border-top:none;padding-top:14px}
 .sec-head{display:flex;align-items:baseline;gap:11px}
-.sec-n{font:600 11px var(--mono);color:var(--red-deep);letter-spacing:.1em;min-width:26px}
-.sec-title{font:600 clamp(19px,5vw,23px)/1.18 var(--serif);letter-spacing:-.01em}
-.tstamp{margin-left:auto;flex:none;font:500 11px var(--mono);color:var(--red-deep);border:1px solid currentColor;border-radius:999px;padding:3px 9px;cursor:pointer;background:transparent}
+.sec-n{font:600 10.5px var(--mono);color:var(--orange);letter-spacing:.1em;min-width:26px}
+.sec-title{font:600 clamp(18px,4.6vw,21px)/1.18 var(--serif);letter-spacing:-.01em}
+.tstamp{margin-left:auto;flex:none;font:500 10.5px var(--mono);color:var(--green);border:1px solid rgba(74,222,128,.35);border-radius:999px;padding:3px 9px;cursor:pointer;background:transparent}
 .sec-body{margin-top:12px}
-.sec-body p{font:400 16.5px/1.62 var(--serif);margin-bottom:10px}
+.sec-body p{font:400 15.5px/1.62 var(--serif);margin-bottom:10px}
 .sec-body p:last-child{margin-bottom:0}
-.sec-note{font:italic 400 14.5px/1.6 var(--serif);color:var(--ink-soft)}
-.sub-head{display:flex;align-items:baseline;gap:11px;font:600 17.5px var(--serif);margin:22px 0 6px}
+.sec-note{font:italic 400 14px/1.6 var(--serif);color:var(--muted)}
+.sub-head{display:flex;align-items:baseline;gap:11px;font:600 16.5px var(--serif);margin:22px 0 6px}
 .sub-head:first-child{margin-top:4px}
-.kt{display:inline-block;font:500 11px var(--mono);color:var(--red-deep);cursor:pointer;min-width:44px}
+.kt{display:inline-block;font:500 10.5px var(--mono);color:var(--orange);cursor:pointer;min-width:44px}
 .no-audio [data-t]{pointer-events:none;opacity:.45}
 .keylist{list-style:none}
-.keylist li{position:relative;padding:12px 0 12px 26px;border-top:1px dashed var(--line);font:400 16px/1.58 var(--serif)}
+.keylist li{position:relative;padding:11px 0 11px 24px;border-top:1px dashed var(--line);font:400 15px/1.58 var(--serif)}
 .keylist li:first-child{border-top:none;padding-top:2px}
-.keylist li::before{content:"";position:absolute;left:3px;top:20px;width:7px;height:7px;background:var(--red)}
+.keylist li::before{content:"";position:absolute;left:3px;top:19px;width:7px;height:7px;background:var(--orange)}
 .keylist .kt{min-width:48px;margin-right:6px}
 .notion{padding:15px 0 14px;border-top:1px dashed var(--line)}
 .notion:first-child{border-top:none;padding-top:2px}
 .notion-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.notion-term{font:italic 600 19px var(--serif)}
-.notion-meta{font:500 10.5px var(--mono);color:var(--ink-soft);letter-spacing:.08em}
-.notion-links{display:flex;gap:18px;margin-top:4px}
-.link-ref{display:inline-flex;align-items:center;gap:5px;font:600 12.5px var(--sans);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
-.note-block{background:var(--red-tint);border-left:3px solid var(--red);border-radius:0 9px 9px 0;padding:13px 15px;margin:14px 0 4px}
-.note-tag{font:600 9.5px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--red-deep)}
-.note-text{font:400 15.5px/1.58 var(--serif);margin-top:7px;min-height:22px}
-.note-text:empty::before{content:attr(data-ph);color:rgba(107,99,85,.5);font-style:italic}
+.notion-term{font:italic 600 18px var(--serif);color:var(--green)}
+.notion-meta{font:500 10px var(--mono);color:var(--muted);letter-spacing:.08em}
+.notion-quote{font:italic 400 14.5px/1.58 var(--serif);color:var(--muted);border-left:2px solid var(--orange);padding-left:13px;margin:9px 0}
+.notion-links{display:flex;gap:18px;margin-top:6px}
+.link-ref{display:inline-flex;align-items:center;gap:5px;font:600 12px var(--sans);color:var(--green);text-decoration:underline;text-underline-offset:3px}
+.note-block{background:var(--orange-dim);border-left:3px solid var(--orange);border-radius:0 9px 9px 0;padding:13px 15px;margin:14px 0 4px}
+.note-tag{font:600 9px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--orange)}
+.note-text{font:400 14.5px/1.58 var(--serif);margin-top:7px;min-height:22px}
+.note-text:empty::before{content:attr(data-ph);color:rgba(150,156,143,.5);font-style:italic}
 .tr-lines{margin-top:4px}
-.tr-line{display:flex;gap:14px;padding:8px 0;border-top:1px solid rgba(33,28,19,.07)}
+.tr-line{display:flex;gap:14px;padding:8px 0;border-top:1px solid rgba(237,238,232,.05)}
 .tr-line:first-child{border-top:none}
 .tr-t{min-width:46px;flex:none;text-align:right}
-.tr-text{font:400 15.5px/1.55 var(--serif)}
+.tr-text{font:400 14.5px/1.55 var(--serif)}
 .sec-tools{display:none;gap:8px;margin-top:14px}
 .editing .sec-tools{display:flex}
-.add-note{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:1px dashed var(--line-strong);border-radius:8px;font:600 12px var(--sans);color:var(--ink-soft)}
+.add-note{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:1px dashed var(--line-strong);border-radius:8px;font:600 12px var(--sans);color:var(--muted)}
 .doc-colophon{display:none}
 .raw-transcript{margin-top:26px}
-.raw-transcript details{border:1px solid var(--line);border-radius:12px;background:var(--sheet);padding:4px 16px}
+.raw-transcript details{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:4px 16px}
 .raw-transcript summary{cursor:pointer;padding:12px 0;font:600 14px var(--sans);list-style:none;display:flex;align-items:center;gap:10px}
 .raw-transcript summary::-webkit-details-marker{display:none}
 .raw-transcript summary svg{transition:transform .2s;margin-left:auto}
 .raw-transcript details[open] summary svg{transform:rotate(180deg)}
-#raw-text{display:block;width:100%;min-height:190px;margin:8px 0;padding:13px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font:400 12.5px/1.7 var(--mono);color:var(--ink);resize:vertical}
+#raw-text{display:block;width:100%;min-height:190px;margin:8px 0;padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font:400 12px/1.7 var(--mono);color:var(--text);resize:vertical}
 .doc-footer{display:flex;justify-content:flex-end;padding:18px 2px 0}
-#save-state{font:500 10.5px var(--mono);color:var(--ok);letter-spacing:.08em;opacity:0;transition:opacity .3s}
+#save-state{font:500 10px var(--mono);color:var(--green);letter-spacing:.08em;opacity:0;transition:opacity .3s}
 #save-state.show{opacity:1}
 
+/* ============================== RÉGLAGES ============================== */
+.set-top{display:flex;align-items:center;gap:12px;padding:26px 0 4px}
+.set-h{font:600 clamp(26px,6.5vw,34px)/1.1 var(--serif);letter-spacing:-.015em;margin:14px 0 10px}
+.set-intro{font-size:14.5px;line-height:1.62;color:var(--muted);max-width:60ch}
+.set-group{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;margin-top:20px}
+.set-title{font:600 18px var(--serif)}
+.howto{margin:12px 0 4px;padding-left:20px;display:grid;gap:9px}
+.howto li{font-size:13px;line-height:1.55;color:var(--muted)}
+.howto li::marker{font:600 11px var(--mono);color:var(--orange)}
+.howto a{font-weight:600}
+.key-row{display:flex;gap:9px;margin-top:16px}
+.key-input{flex:1;min-width:0;height:48px;border:1.5px solid var(--line-strong);border-radius:11px;background:transparent;padding:0 14px;font:500 13px var(--mono);color:var(--text)}
+.key-input:focus{border-color:var(--orange);outline:none}
+.key-input::placeholder{color:rgba(150,156,143,.5)}
+.btn-eye{width:48px;height:48px;flex:none;border:1.5px solid var(--line-strong);border-radius:11px;background:var(--surface);display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+.key-actions{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+.key-actions .btn-primary{height:44px;padding:0 18px;font-size:14px}
+.link-btn{background:none;border:none;font:600 13px var(--sans);color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:6px 2px}
+.set-status{margin-top:12px;font:500 11.5px var(--mono);letter-spacing:.04em;min-height:16px;line-height:1.5}
+.set-status.ok{color:var(--green)}
+.set-status.err{color:var(--orange)}
+.model-cards{display:grid;gap:10px;margin-top:14px}
+.prov-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.model-card{border:1.5px solid var(--line-strong);border-radius:12px;padding:13px 15px;text-align:left;background:var(--surface-2)}
+.model-card.active{border-color:var(--orange);background:var(--orange-dim)}
+.model-name{display:block;font:600 14.5px var(--sans)}
+.model-desc{display:block;font-size:11.5px;margin-top:3px;color:var(--muted)}
+.model-input{width:100%;height:44px;margin-top:8px;border:1.5px solid var(--line-strong);border-radius:11px;background:var(--surface-2);padding:0 12px;font:500 13px var(--mono);color:var(--text)}
+.model-input:focus{border-color:var(--orange);outline:none}
+.model-tools{margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.model-tools .btn-ghost{height:40px;font-size:12.5px;padding:0 12px}
+.model-hint{font-size:11.5px;color:var(--muted);line-height:1.45;flex:1;min-width:180px}
+.lang-row{margin-top:16px}
+.lang-select{width:100%;height:46px;margin-top:8px;border:1.5px solid var(--line-strong);border-radius:11px;background:var(--surface-2);padding:0 12px;font:500 14px var(--sans);color:var(--text)}
+.set-privacy{margin-top:18px;font-size:12px;line-height:1.6;color:var(--muted);display:flex;gap:8px}
+.set-privacy svg{flex:none;margin-top:1px;color:var(--green)}
+
 /* ============================== COMPOSITEUR ============================== */
-.composer{position:fixed;inset:0;z-index:90;background:#1C1710;color:var(--paper);display:flex;align-items:center;justify-content:center;padding:24px;transition:opacity .35s;overflow-y:auto}
+.composer{position:fixed;inset:0;z-index:90;background:rgba(8,10,7,.97);color:var(--text);display:flex;align-items:center;justify-content:center;padding:24px;transition:opacity .35s;overflow-y:auto}
 .composer[hidden]{display:none}
 .composer.leaving{opacity:0}
 .composer-card{max-width:330px;width:100%}
 .ring-wrap{position:relative;width:118px;height:118px;margin:0 auto 20px}
 .ring{width:118px;height:118px;transform:rotate(-90deg)}
-.ring-bg{fill:none;stroke:rgba(241,236,226,.14);stroke-width:3}
-.ring-fg{fill:none;stroke:var(--red-bright);stroke-width:3;stroke-linecap:round;stroke-dasharray:326.7;stroke-dashoffset:326.7;transition:stroke-dashoffset .5s cubic-bezier(.4,0,.2,1)}
-.ring-core{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--paper)}
-.ring-num{font:600 26px var(--mono);text-align:center;line-height:1}
-.ring-num small{display:block;font-size:9px;letter-spacing:.2em;color:rgba(241,236,226,.5);margin-top:3px}
+.ring-bg{fill:none;stroke:rgba(237,238,232,.1);stroke-width:3}
+.ring-fg{fill:none;stroke:var(--orange);stroke-width:3;stroke-linecap:round;stroke-dasharray:326.7;stroke-dashoffset:326.7;transition:stroke-dashoffset .5s cubic-bezier(.4,0,.2,1)}
+.ring-core{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--orange)}
+.ring-num{font:600 26px var(--mono);text-align:center;line-height:1;color:var(--text)}
+.ring-num small{display:block;font-size:9px;letter-spacing:.2em;color:var(--muted);margin-top:3px}
 .spin{animation:rot 1.1s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
-.composer-title{font:600 25px var(--serif);text-align:center;letter-spacing:-.01em}
-.composer-sub{text-align:center;font:italic 400 15px var(--serif);color:rgba(241,236,226,.55);margin:7px 0 20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.composer-title{font:600 24px var(--serif);text-align:center;letter-spacing:-.01em}
+.composer-sub{text-align:center;font:italic 400 15px var(--serif);color:var(--muted);margin:7px 0 20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .c-steps{list-style:none}
-.c-step{display:flex;align-items:center;gap:13px;padding:8px 0;font:500 12.5px var(--mono);letter-spacing:.04em;color:rgba(241,236,226,.34);transition:color .25s}
-.c-idx{color:rgba(241,236,226,.3);width:20px}
+.c-step{display:flex;align-items:center;gap:13px;padding:8px 0;font:500 12px var(--mono);letter-spacing:.04em;color:rgba(237,238,232,.3);transition:color .25s}
+.c-idx{color:rgba(237,238,232,.25);width:20px}
 .c-mark{margin-left:auto;width:16px;display:flex;justify-content:flex-end}
-.c-step.active{color:var(--paper)}
-.c-step.active .c-idx{color:var(--red-bright)}
-.c-step.active .c-mark::before{content:"";width:12px;height:2px;background:var(--red-bright);animation:pulse 1s ease-in-out infinite}
-.c-step.done{color:var(--paper)}
-.c-step.done .c-mark svg{color:var(--red-bright)}
-.c-desc{font:400 13.5px/1.55 var(--sans);color:rgba(241,236,226,.6);margin:2px 0 18px;text-align:center}
+.c-step.active{color:var(--text)}
+.c-step.active .c-idx{color:var(--orange)}
+.c-step.active .c-mark::before{content:"";width:12px;height:2px;background:var(--orange);animation:pulse 1s ease-in-out infinite}
+.c-step.done{color:var(--text)}
+.c-step.done .c-mark svg{color:var(--green)}
+.c-desc{font:400 13.5px/1.55 var(--sans);color:var(--muted);margin:2px 0 18px;text-align:center}
 .c-btns{display:flex;flex-direction:column;gap:10px}
-.btn-ai{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 16px;background:var(--red);color:#fff;border-radius:11px;font:600 15px var(--sans);transition:transform .12s}
+.btn-ai{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 16px;background:var(--orange);color:#1A0F04;border-radius:12px;font:600 15px var(--sans);transition:transform .12s}
 .btn-ai:active{transform:scale(.97)}
-.btn-ai small{font:400 10.5px var(--mono);letter-spacing:.04em;opacity:.85}
-.btn-skipc{padding:12px;border:1px solid rgba(241,236,226,.3);border-radius:11px;color:var(--paper);font:600 13.5px var(--sans);transition:background .15s}
-.btn-skipc:active{background:rgba(241,236,226,.1)}
+.btn-ai small{font:400 10px var(--mono);letter-spacing:.04em;opacity:.8}
+.btn-skipc{padding:12px;border:1px solid var(--line-strong);border-radius:12px;color:var(--text);font:600 13.5px var(--sans);transition:background .15s}
+.btn-skipc:active{background:var(--orange-dim)}
 .ai-stat{text-align:center;margin:4px 0 0}
-.ai-phase{font:600 11.5px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--red-bright)}
-.ai-detail{font:400 13px/1.55 var(--sans);color:rgba(241,236,226,.6);margin-top:9px}
-.ai-elapsed{margin-top:10px;font:500 11px var(--mono);color:rgba(241,236,226,.5)}
+.ai-phase{font:600 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--orange)}
+.ai-detail{font:400 13px/1.55 var(--sans);color:var(--muted);margin-top:9px}
+.ai-elapsed{margin-top:10px;font:500 11px var(--mono);color:var(--muted)}
 .ai-cancel{margin:18px auto 0;display:inline-flex}
-.composer-note{margin-top:24px;text-align:center;font:400 10px var(--mono);letter-spacing:.1em;color:rgba(241,236,226,.38);line-height:1.6}
+.composer-note{margin-top:24px;text-align:center;font:400 10px var(--mono);letter-spacing:.1em;color:rgba(150,156,143,.6);line-height:1.6}
 
 /* ============================== TOAST / MODAL / FEUILLE ============================== */
 #toast-root{position:fixed;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:120;pointer-events:none;padding:0 20px}
-.toast{display:flex;align-items:center;gap:10px;max-width:420px;background:var(--ink);color:var(--paper);padding:11px 17px;border-radius:10px;font:500 13.5px var(--sans);box-shadow:0 12px 32px -12px rgba(33,28,19,.5);opacity:0;transform:translateY(10px);transition:opacity .28s,transform .28s}
+.toast{display:flex;align-items:center;gap:10px;max-width:420px;background:var(--surface-2);border:1px solid var(--line);color:var(--text);padding:11px 17px;border-radius:12px;font:500 13.5px var(--sans);box-shadow:0 14px 40px -14px rgba(0,0,0,.7);opacity:0;transform:translateY(10px);transition:opacity .28s,transform .28s}
 .toast.in{opacity:1;transform:none}
 .toast svg{flex:none}
-.t-ok svg{color:#8FD19E}.t-warn svg{color:var(--red-bright)}.t-info svg{color:#E8C77B}
-.modal-overlay,.sheet-overlay{position:fixed;inset:0;background:rgba(33,28,19,.45);backdrop-filter:blur(2px);z-index:100;opacity:0;transition:opacity .25s}
+.t-ok svg{color:var(--green)}.t-warn svg{color:var(--orange)}.t-info svg{color:var(--orange)}
+.modal-overlay,.sheet-overlay{position:fixed;inset:0;background:rgba(4,5,3,.66);backdrop-filter:blur(3px);z-index:100;opacity:0;transition:opacity .25s}
 .modal-overlay.in,.sheet-overlay.in{opacity:1}
-.modal{position:fixed;z-index:101;left:50%;top:50%;transform:translate(-50%,-46%);width:min(92vw,350px);background:var(--paper);border-radius:14px;padding:22px 20px 18px;box-shadow:0 24px 60px -20px rgba(33,28,19,.45)}
+.modal{position:fixed;z-index:101;left:50%;top:50%;transform:translate(-50%,-46%);width:min(92vw,360px);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 20px 18px;box-shadow:0 24px 60px -20px rgba(0,0,0,.8)}
 .modal.in{transform:translate(-50%,-50%);transition:transform .25s}
-.modal h3{font:600 20px var(--serif);margin-bottom:8px}
-.modal p{font-size:14px;line-height:1.55;color:var(--ink-soft)}
+.modal h3{font:600 19px var(--serif);margin-bottom:8px}
+.modal p{font-size:13.5px;line-height:1.55;color:var(--muted)}
 .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 .print-checks{display:grid;gap:8px;margin-top:14px}
-.check-row{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--paper);text-align:left}
-.check-row.on{border-color:var(--ink);background:var(--sheet)}
+.check-row{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;border:1.5px solid var(--line-strong);border-radius:11px;background:var(--surface-2);text-align:left;width:100%}
+.check-row.on{border-color:var(--orange);background:var(--orange-dim)}
 .cbox{flex:none;width:20px;height:20px;border:1.5px solid var(--line-strong);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:transparent;margin-top:2px;transition:all .15s}
-.check-row.on .cbox{background:var(--red);border-color:var(--red);color:#fff}
-.check-label{display:block;font:600 14.5px var(--sans)}
-.check-desc{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.4}
-.bsheet{position:fixed;left:0;right:0;bottom:0;z-index:101;background:var(--paper);border-radius:18px 18px 0 0;padding:10px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.3,.9,.3,1);max-width:760px;margin:0 auto;max-height:70vh;overflow-y:auto}
+.check-row.on .cbox{background:var(--orange);border-color:var(--orange);color:#1A0F04}
+.check-label{display:block;font:600 14px var(--sans)}
+.check-desc{display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.bsheet{position:fixed;left:0;right:0;bottom:0;z-index:101;background:var(--surface);border:1px solid var(--line);border-bottom:none;border-radius:18px 18px 0 0;padding:10px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.3,.9,.3,1);max-width:720px;margin:0 auto;max-height:70vh;overflow-y:auto}
 .bsheet.in{transform:none}
-.bsheet-head{font:600 10px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);padding:10px 4px 8px}
-.bs-item{display:flex;align-items:center;gap:14px;width:100%;padding:14px 4px;font:500 15px var(--sans);border-top:1px solid var(--line);text-align:left}
-.bs-item.danger{color:var(--red-deep)}
+.bsheet-head{font:600 10px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);padding:10px 4px 8px}
+.bs-item{display:flex;align-items:center;gap:14px;width:100%;padding:14px 4px;font:500 14.5px var(--sans);border-top:1px solid var(--line);text-align:left;color:var(--text)}
+.bs-item svg{color:var(--orange)}
+.bs-item.danger{color:var(--orange)}
 
 @media(min-width:880px){
   .home-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:44px;align-items:start}
   .library{margin-top:52px}
 }
-/* ============================== IMPRESSION ============================== */
+/* ============================== IMPRESSION (repli hors ligne uniquement) ============================== */
 @media print{
   @page{margin:14mm 13mm}
   html,body{background:#fff!important}
-  body::after{display:none}
-  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .no-print,#topbar,.player,.doc-actions,.raw-transcript,.doc-footer,#toast-root,.composer,.sec-tools,.setup-banner{display:none!important}
   #app{padding:0;max-width:none}
   #app .view{display:none!important}
   #app #view-doc{display:block!important}
-  .sheet{border:none;background:#fff;padding:0 0 0 22px;box-shadow:none}
-  .sheet::before{background:rgba(162,38,15,.5)}
+  .sheet{border:none;background:#fff;padding:0}
+  .doc-title,.sec-title,.sub-head{color:#111}
+  .sheet-body,.sec-body p,.keylist li,.tr-text,.doc-lead,.sec-note{color:#222!important}
+  .doc-lead,.sec-note,.notion-quote,.notion-meta,.doc-eyebrow{color:#666!important}
+  .doc-eyebrow,.sec-n,.kt{color:#C2410C!important}
+  .notion-term{color:#15803D!important}
+  .tstamp{border-color:#999;color:#666}
   .reveal{animation:none!important}
-  .tstamp{border:none;padding:0;background:none;cursor:default}
-  .kt{cursor:default}
   .sec{break-inside:auto}
   .sec-head,.sub-head,.notion,.keylist li,.note-block{break-inside:avoid}
-  .sec-head{break-after:avoid}
   .link-ref::after{content:" — " attr(data-href);font:400 8pt var(--mono);color:#666;word-break:break-all;text-decoration:none}
   .doc-colophon{display:block;margin-top:26px;padding-top:10px;border-top:1px solid #ccc;font:400 8.5pt var(--mono);color:#666}
 }
@@ -354,7 +347,7 @@ body[data-view="rec"] #topbar{display:none}
       <div class="hero">
         <p class="hero-kicker">Enregistrement · Transcription · Résumé IA</p>
         <h1 class="hero-title">Capturez la parole,<br>gardez l'<em>essentiel</em>.</h1>
-        <p class="hero-sub">Nommez un enregistrement de cours, de réunion ou de conversation. Écho le transcrit avec Whisper, puis l'IA en rédige un vrai résumé structuré — en filtrant bavardages et hors-sujets — prêt à corriger et exporter en PDF.</p>
+        <p class="hero-sub">Nommez un enregistrement de cours, de réunion ou de conversation — ou importez un audio existant. Écho le transcrit avec Whisper, puis l'IA en rédige un résumé structuré, épuré des bavardages, prêt à exporter en PDF.</p>
       </div>
       <div>
         <div class="new-rec">
@@ -368,6 +361,11 @@ body[data-view="rec"] #topbar{display:none}
           </div>
           <button class="btn-primary" id="btn-start"><span class="rec-dot"></span>Démarrer l'enregistrement</button>
           <p class="hint" id="privacy-hint"></p>
+        </div>
+        <div class="import-box">
+          <button class="import-btn" id="btn-import"></button>
+          <input id="file-import" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.oga,.webm,.aac,.flac,.opus" hidden>
+          <p class="import-note">MP3, M4A, WAV, OGG… — rejoint la bibliothèque et se transcrit comme un enregistrement.</p>
         </div>
         <button class="setup-banner" id="setup-banner"></button>
       </div>
@@ -393,16 +391,7 @@ body[data-view="rec"] #topbar{display:none}
       <div class="rec-state" id="rec-state"><span class="dot"></span><span id="rec-state-txt">En cours</span></div>
     </div>
     <div class="wave-wrap"><canvas id="wave"></canvas></div>
-    <div class="rec-live">
-      <div class="live-head">
-        <span class="field-label">Transcription en direct</span>
-        <span class="engine-chip" id="engine-chip"><span class="edot"></span><span id="engine-txt">démarrage…</span></span>
-        <span id="live-words" class="mono">0 mots</span>
-      </div>
-      <div class="live-text" id="live-text"><span class="live-idle">La transcription en direct apparaîtra ici si le navigateur le permet — sinon, Whisper transcrira l'enregistrement à l'arrêt.</span></div>
-    </div>
     <p class="bg-hint" id="bg-hint"></p>
-    <div class="warn-strip" id="speech-warn" hidden></div>
     <div class="rec-controls">
       <button class="rec-btn" id="btn-mark" title="Poser un repère"></button>
       <button class="rec-btn rec-stop" id="btn-stop" title="Arrêter et composer le document"></button>
@@ -443,7 +432,7 @@ body[data-view="rec"] #topbar{display:none}
       <button class="btn-ghost" id="set-back"></button>
     </div>
     <h2 class="set-h">Transcription &amp; résumé IA</h2>
-    <p class="set-intro">Écho s'appuie sur <strong>Whisper</strong> pour la transcription et sur un <strong>modèle de langage</strong> pour rédiger le résumé. Avec une seule clé <strong>Groq</strong> gratuite, tout est inclus : Whisper large-v3 pour la transcription, GPT-OSS 120B pour la rédaction. Z.ai, Qwen et OpenRouter sont aussi pris en charge ci-dessous.</p>
+    <p class="set-intro">Écho s'appuie sur <strong>Whisper</strong> pour la transcription et sur un <strong>modèle de langage</strong> pour rédiger le résumé. Avec une seule clé <strong>Groq</strong> gratuite, tout est inclus. Z.ai, Qwen et OpenRouter sont aussi pris en charge.</p>
 
     <div class="set-group">
       <p class="set-title">Clé API Groq — transcription Whisper</p>
@@ -465,7 +454,6 @@ body[data-view="rec"] #topbar{display:none}
 
     <div class="set-group">
       <p class="set-title">Rédaction IA du résumé</p>
-      <p class="set-intro" style="margin-top:8px">Une fois la transcription faite, le modèle rédige un résumé complet : vue d'ensemble, plan en sections, notions définies, points à retenir — et décisions / actions pour les réunions. Les bavardages et conversations hors sujet sont ignorés. Avec Groq, votre clé Whisper est réutilisée automatiquement.</p>
       <div class="prov-cards">
         <button class="model-card active" data-prov="groq"><span class="model-name">Groq</span><span class="model-desc">GPT-OSS 120B — réutilise la clé Whisper</span></button>
         <button class="model-card" data-prov="zai"><span class="model-name">Z.ai</span><span class="model-desc">GLM-4-Flash — gratuit</span></button>
@@ -478,7 +466,7 @@ body[data-view="rec"] #topbar{display:none}
       </div>
       <div class="model-tools">
         <button class="btn-ghost" id="ai-btn-models"></button>
-        <span class="model-hint">La liste est lue directement depuis votre compte : seuls les modèles réellement accessibles y figurent. Note : les modèles Llama de Meta sont restreints dans l'Union européenne — GPT-OSS et Qwen, eux, y sont disponibles.</span>
+        <span class="model-hint">La liste est lue directement depuis votre compte. Note : les modèles Llama (Meta) sont restreints dans l'UE — GPT-OSS et Qwen y sont disponibles.</span>
       </div>
       <div style="margin-top:16px">
         <span class="field-label">Clé API du fournisseur choisi</span>
@@ -520,13 +508,12 @@ body[data-view="rec"] #topbar{display:none}
     </div>
 
     <div class="set-group">
-      <p class="set-title">Application installable (PWA)</p>
-      <p class="set-intro" style="margin-top:8px">Sur Android (Chrome), ouvrez le menu ⋯ puis «&nbsp;Ajouter à l'écran d'accueil&nbsp;» : Écho s'installe comme une application autonome, avec son icône. En usage local (fichier ouvert directement), l'application fonctionne déjà hors ligne par nature.</p>
+      <p class="set-title">Application installable</p>
+      <p class="set-intro" style="margin-top:8px">Sur Android (Chrome) : menu ⋯ puis «&nbsp;Ajouter à l'écran d'accueil&nbsp;». L'application s'ouvre ensuite hors ligne si un <span class="mono">sw.js</span> est présent à côté de la page.</p>
       <p class="set-status" id="pwa-status"></p>
       <div class="key-actions">
         <button class="btn-ghost" id="btn-sw-dl"></button>
       </div>
-      <p class="set-intro" style="margin-top:10px;font-size:12.5px">Si vous hébergez cette page sur un serveur (GitHub Pages, etc.), placez le fichier sw.js téléchargeable ci-dessus à côté de la page&nbsp;: l'application pourra alors s'ouvrir sans connexion, avec une prise en charge hors ligne complète.</p>
     </div>
 
     <p class="set-privacy" id="set-privacy"></p>
@@ -535,7 +522,7 @@ body[data-view="rec"] #topbar{display:none}
 
 <audio id="audio-el" preload="metadata" hidden></audio>
 
-<!-- Compositeur (étapes / choix / progression) -->
+<!-- Compositeur (progression) -->
 <div class="composer no-print" id="composer" hidden>
   <div class="composer-card">
     <div class="ring-wrap">
@@ -604,8 +591,9 @@ eye:'<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12
 eyeoff:'<path d="M4 4l16 16"/><path d="M9.9 5.2A9.9 9.9 0 0 1 12 5c6 0 9.5 7 9.5 7a17.7 17.7 0 0 1-2.9 3.9M6.1 6.2A17 17 0 0 0 2.5 12S6 19 12 19c1.4 0 2.7-.3 3.8-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 8-8M16 4.5 19.5 8M13.5 7l3 3"/>',
 cloud:'<path d="M7 18.5a4.5 4.5 0 1 1 .7-8.95A6 6 0 0 1 19.4 11.4 3.6 3.6 0 0 1 18.5 18.5Z"/>',
-spark:'<path d="M12 3.5l1.9 6.1 6.1 1.9-6.1 1.9L12 19.5l-1.9-6.1L4 11.5l6.1-1.9z"/><path d="M18.6 3.2l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/>',
-moon:'<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/>'
+spark:'<path d="M12 3.5l1.9 6.1 6.1 1.9-6.1 1.9L12 19.5l-1.9-6.1L4 11.5l6.1-1.9z"/>',
+moon:'<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/>',
+upload:'<path d="M12 19V8m0 0-4.2 4.2M12 8l4.2 4.2M5 4.5h14"/>'
 };
 function icon(n,s=18){return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`}
 
@@ -667,10 +655,7 @@ async function dbDel(store,key){const d=await db();if(useMem||!d){MEM[store].del
   return new Promise((res,rej)=>{const tx=d.transaction(store,'readwrite');tx.objectStore(store).delete(key);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
 
 /* ==================== CONFIGURATION ==================== */
-/* Collez ici votre clé Groq pour l'activer par défaut (optionnel) :
-   elle sert à la fois pour la transcription Whisper et le résumé IA (GPT-OSS 120B). */
-const CLE_API_PAR_DEFAUT='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';
-
+const CLE_API_PAR_DEFAUT='';
 const CFG={
   get key(){return localStorage.getItem('echo_groq_key')||CLE_API_PAR_DEFAUT},
   set key(v){v?localStorage.setItem('echo_groq_key',v):localStorage.removeItem('echo_groq_key')},
@@ -680,8 +665,6 @@ const CFG={
   set lang(v){localStorage.setItem('echo_lang',v)}
 };
 const shortModel=()=>CFG.model.includes('turbo')?'turbo':'large-v3';
-
-/* ---- Fournisseurs de rédaction IA (tous compatibles OpenAI) ---- */
 const AI_PROVIDERS={
   groq:{label:'Groq — GPT-OSS 120B',endpoint:'https://api.groq.com/openai/v1/chat/completions',model:'openai/gpt-oss-120b'},
   zai:{label:'Z.ai — GLM-4-Flash',endpoint:'https://api.z.ai/api/paas/v4/chat/completions',model:'glm-4-flash'},
@@ -694,9 +677,6 @@ const PROVIDER_BASE={
   qwen:'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
   openrouter:'https://openrouter.ai/api/v1'
 };
-/* Ordre de préférence si un modèle doit être remplacé automatiquement.
-   NB : les modèles Llama (Meta) sont restreints dans l'UE sur Groq —
-   GPT-OSS et Qwen, eux, y sont disponibles. */
 const PROVIDER_PREF={
   groq:['openai/gpt-oss-120b','openai/gpt-oss-20b','moonshotai/kimi-k2-instruct','qwen/qwen3-32b','llama-3.3-70b-versatile','llama-3.1-8b-instant','gemma2-9b-it'],
   zai:['glm-4-flash','glm-4.5-flash','glm-4','glm-4-flashx'],
@@ -950,7 +930,7 @@ function buildDocHTML(P,s){
     sec('Repères posés pendant l\u2019enregistrement',`<ul class="keylist">${s.marks.map(t=>`<li>${ktHTML(t)}repère manuel</li>`).join('')}</ul>`,s.marks[0],'resume');
   if(s.segments.length)
     sec('Transcription intégrale',`<div class="tr-lines">${s.segments.map(x=>`<div class="tr-line"><span class="kt tr-t" data-t="${Math.round(x.start)}">${fmtClock(x.start)}</span><span class="tr-text">${esc(x.text)}</span></div>`).join('')}</div>`,s.segments[0].start,'transcript');
-  parts.push(`<p class="doc-colophon">Généré par Écho — synthèse automatique établie sur l'appareil. Les horodatages renvoient à l'enregistrement audio d'origine.</p>`);
+  parts.push(`<p class="doc-colophon">Généré par Écho — les horodatages renvoient à l'enregistrement audio d'origine.</p>`);
   return parts.join('');
 }
 
@@ -992,11 +972,6 @@ Exigences :
 Réponds uniquement avec ce JSON :
 {"vue_densemble":"...","sections":[{"titre":"...","depuis":"mm:ss","contenu":"..."}],"notions":[{"terme":"...","definition":"...","depuis":"mm:ss"}],"points_cles":["..."]${isM?',"decisions":["..."],"actions":[{"quoi":"...","quand":""}]':''}}`;
 }
-/* Appel chat completions, avec :
-   - repli automatique si le mode JSON n'est pas supporté ;
-   - bascule automatique vers un modèle disponible si le modèle demandé est
-     inexistant ou inaccessible (ex. Llama restreint dans l'UE sur Groq) ;
-   - température adaptée aux modèles de raisonnement (GPT-OSS, DeepSeek-R1). */
 async function aiChat(messages,opts={}){
   let {maxTokens=8000,json=true,signal}=opts;
   const p=AI_PROVIDERS[AI.provider];
@@ -1040,7 +1015,6 @@ async function aiChat(messages,opts={}){
       throw new Error('clé refusée ('+res.status+') — vérifiez la clé '+p.label);
     if(res.status===429)
       throw new Error('limite de débit atteinte — réessayez dans un instant');
-    /* Modèle inexistant / inaccessible → remplaçant automatique parmi les modèles du compte */
     if(/exist|not found|not_found|no access|unavailable|decommission|deprecated|unsupported|does not have/i.test(err)){
       try{
         const list=await fetchChatModels();
@@ -1055,7 +1029,6 @@ async function aiChat(messages,opts={}){
       }catch(e2){}
       throw lastErr;
     }
-    /* Limite de jetons trop haute pour ce modèle → réessai plus bas */
     if(res.status===400&&/token/i.test(err)&&maxTokens>2500){
       maxTokens=3000;continue;
     }
@@ -1098,7 +1071,7 @@ function buildAIDocHTML(D,s){
     const dec=(Array.isArray(D.decisions)?D.decisions:[]).map(x=>String(x).trim()).filter(Boolean);
     if(dec.length)sec('Décisions',`<ul class="keylist">${dec.map(d=>`<li>${esc(d)}</li>`).join('')}</ul>`,null,'resume');
     const acts=(Array.isArray(D.actions)?D.actions:[]).filter(a=>a&&(a.quoi||typeof a==='string'));
-    if(acts.length)sec('Actions à suivre',`<ul class="keylist">${acts.map(a=>`<li>${esc(typeof a==='string'?a:a.quoi)}${a&&a.quand?` <em style="color:var(--ink-soft)">— ${esc(a.quand)}</em>`:''}</li>`).join('')}</ul>`,null,'resume');
+    if(acts.length)sec('Actions à suivre',`<ul class="keylist">${acts.map(a=>`<li>${esc(typeof a==='string'?a:a.quoi)}${a&&a.quand?` <em style="color:var(--muted)">— ${esc(a.quand)}</em>`:''}</li>`).join('')}</ul>`,null,'resume');
   }
   const pts=(Array.isArray(D.points_cles)?D.points_cles:[]).map(x=>String(x).trim()).filter(Boolean);
   if(pts.length)sec(s.type==='reunion'?'Points marquants':'Points clés à retenir',`<ul class="keylist">${pts.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`,null,'resume');
@@ -1245,6 +1218,8 @@ function blobExt(blob){
   if(t.includes('mp4')||t.includes('aac'))return 'm4a';
   if(t.includes('ogg'))return 'ogg';
   if(t.includes('wav'))return 'wav';
+  if(t.includes('mpeg'))return 'mp3';
+  if(t.includes('flac'))return 'flac';
   return 'webm';
 }
 async function blobToMono16k(blob){
@@ -1502,7 +1477,7 @@ function askPostRecord(sess,hasAudio){
     $('#composer-sub').textContent=sess.title;
     $('#ring-core').innerHTML=icon('mic',30);
     $('#ring-fg').style.strokeDashoffset=0;
-    $('#composer-note').textContent='La transcription en direct n\u2019a rien capté (limitation du navigateur) — l\u2019audio, lui, est intact.';
+    $('#composer-note').textContent='L\u2019audio est intact et prêt à être transcrit.';
     if(!hasAudio){
       $('#composer-body').innerHTML=`
         <p class="c-desc">Aucun audio n\u2019a pu être enregistré sur cet appareil. Vous pourrez saisir ou coller une transcription manuellement depuis le document.</p>
@@ -1512,7 +1487,7 @@ function askPostRecord(sess,hasAudio){
     }
     const hasKey=!!CFG.key;
     $('#composer-body').innerHTML=`
-      <p class="c-desc">${esc(fmtDurLong(sess.durationMs))} d\u2019audio prêtes à être transcrites.${hasKey?' Ensuite, l\u2019IA rédigera automatiquement le résumé du cours.':' Activez la transcription gratuite (2 minutes), puis l\u2019IA rédigera le résumé.'}</p>
+      <p class="c-desc">${esc(fmtDurLong(sess.durationMs))} d\u2019audio prêtes à être transcrites.${hasKey?' Ensuite, l\u2019IA rédigera automatiquement le résumé.':' Activez la transcription gratuite (2 minutes), puis l\u2019IA rédigera le résumé.'}</p>
       <div class="c-btns">
         ${hasKey
           ?`<button class="btn-ai" id="c-api"><span style="display:inline-flex;align-items:center;gap:8px">${icon('cloud',18)}Transcrire avec Whisper</span><small>modèle ${shortModel()} · puis résumé IA automatique</small></button>`
@@ -1527,6 +1502,84 @@ function askPostRecord(sess,hasAudio){
     $('#c-local').onclick=()=>pick('local');
     $('#c-skip').onclick=()=>pick('skip');
   });
+}
+
+/* ==================== IMPORT D'UN AUDIO ==================== */
+function extOf(file){
+  const m=/\.([a-z0-9]+)$/i.exec(file.name||'');
+  if(m)return m[1].toLowerCase();
+  return blobExt(file);
+}
+function audioDuration(blob){
+  return new Promise(res=>{
+    const url=URL.createObjectURL(blob);
+    const a=new Audio();
+    const done=v=>{URL.revokeObjectURL(url);res(isFinite(v)&&v>0?Math.round(v):0)};
+    a.preload='metadata';
+    a.onloadedmetadata=()=>done(a.duration*1000);
+    a.onerror=()=>done(0);
+    a.src=url;
+    setTimeout(()=>done(a.duration&&isFinite(a.duration)?a.duration*1000:0),10000);
+  });
+}
+function askImportDetails(defTitle){
+  return new Promise(res=>{
+    const root=$('#modal-root');
+    root.innerHTML=`<div class="modal-overlay"></div>
+      <div class="modal"><h3>Importer un audio</h3>
+        <span class="field-label">Nom</span>
+        <input id="imp-title" class="key-input" type="text" maxlength="90" value="${esc(defTitle)}" style="margin-top:8px">
+        <span class="field-label" style="margin-top:16px">Nature</span>
+        <div class="seg" id="imp-seg">
+          <button class="seg-btn active" data-type="cours">${icon('book',15)}<span>Cours</span></button>
+          <button class="seg-btn" data-type="reunion">${icon('users',15)}<span>Réunion</span></button>
+          <button class="seg-btn" data-type="conversation">${icon('chat',15)}<span>Conversation</span></button>
+        </div>
+        <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
+        <button class="btn-primary" data-yes="1" style="height:44px">${icon('download',15)}<span>Importer</span></button></div>
+      </div>`;
+    const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
+    requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
+    let type='cours';
+    m.querySelectorAll('#imp-seg .seg-btn').forEach(b=>b.addEventListener('click',()=>{
+      m.querySelectorAll('#imp-seg .seg-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');type=b.dataset.type;
+    }));
+    const close=v=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>root.innerHTML='',250);res(v)};
+    m.querySelector('[data-no]').onclick=()=>close(null);
+    ov.onclick=()=>close(null);
+    m.querySelector('[data-yes]').onclick=()=>{
+      const title=m.querySelector('#imp-title').value.trim()||defTitle;
+      close({title,type});
+    };
+  });
+}
+async function importAudioFile(file){
+  if(!file)return;
+  if(file.size>600*1024*1024){toast('Fichier trop volumineux (maximum ~600 Mo).','warn');return}
+  const rawName=(file.name||'').replace(/\.[^.]+$/,'').replace(/[_\-]+/g,' ').replace(/\s+/g,' ').trim();
+  const det=await askImportDetails(cap(rawName||'Audio importé'));
+  if(!det)return;
+  toast('Import en cours…','info',1600);
+  const durMs=await audioDuration(file);
+  const sess={id:uid(),title:det.title,type:det.type,createdAt:Date.now(),durationMs:durMs,segments:[],marks:[],docHTML:null,audioExt:extOf(file),imported:true};
+  await dbPut('audio',{id:sess.id,blob:file});
+  await dbPut('sessions',sess);
+  await refreshHome();
+  toast('Audio importé dans la bibliothèque.','ok');
+  const go=await confirmDialog({
+    title:'Transcrire et résumer maintenant ?',
+    body:'Whisper transcrira « '+sess.title+' » puis l\u2019IA en rédigera le résumé. Vous pouvez aussi le faire plus tard depuis le menu (⋯) de cet enregistrement.',
+    ok:'Transcrire et résumer',cancel:'Plus tard'
+  });
+  await openDoc(sess.id);
+  if(go){
+    const done=await runApiTranscription(sess);
+    if(done){
+      if(AI.ready)await runAIDraft(sess);
+      else await composeAndShow(sess);
+    }
+  }
 }
 
 /* ==================== RENDU DU DOCUMENT ==================== */
@@ -1588,12 +1641,7 @@ function pickMime(){
 }
 function nowMs(){return rec?rec.accum+(rec.activeStart!=null?performance.now()-rec.activeStart:0):0}
 
-/* --- Maintien en arrière-plan (écran éteint) ---
-   Sur Android / Chrome, une page qui « joue un média » n'est pas gelée quand
-   l'écran s'éteint : on joue donc une boucle quasi inaudible (amplitude ~1/30000)
-   et on déclare une session média au nom de l'enregistrement. L'écran de
-   verrouillage affiche l'enregistrement, et le micro + MediaRecorder continuent.
-   iOS Safari, lui, coupe systématiquement l'audio en arrière-plan. */
+/* --- Maintien en arrière-plan (écran éteint, Android/Chrome) --- */
 let bgAudio=null,bgUrl=null;
 function startKeepAlive(title){
   try{
@@ -1623,9 +1671,9 @@ async function startSession(){
   try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}
   catch(e){toast('Accès au micro refusé — autorisez-le dans les réglages du navigateur.','warn');btn.disabled=false;return}
   const mime=pickMime();
-  rec={status:'recording',stream,title,type,mime,chunks:[],segments:[],marks:[],lastEnd:0,
-       accum:0,activeStart:performance.now(),wantSpeech:true,hist:[],level:0,wave:$('#wave'),
-       gotResult:false,voiceMs:0,conflictWarned:false,_pts:null,wasHidden:false,lastFrame:performance.now()};
+  rec={status:'recording',stream,title,type,mime,chunks:[],marks:[],
+       accum:0,activeStart:performance.now(),hist:[],level:0,wave:$('#wave'),
+       wasHidden:false,lastFrame:performance.now()};
   try{
     rec.ctx=new (window.AudioContext||window.webkitAudioContext)();
     if(rec.ctx.state==='suspended')rec.ctx.resume();
@@ -1641,32 +1689,14 @@ async function startSession(){
   $('#rec-name').textContent=title;
   $('#rec-type-badge').textContent=TYPE_LABEL[type].toUpperCase();
   $('#rec-timer').textContent='00:00';
-  $('#live-text').innerHTML='<span class="live-idle">La transcription en direct apparaîtra ici si le navigateur le permet — sinon, Whisper transcrira l\u2019enregistrement à l\u2019arrêt.</span>';
-  $('#live-words').textContent='0 mots';
-  $('#speech-warn').hidden=true;$('#speech-warn').textContent='';
-  setEngine('wait','démarrage…');
-  $('#btn-pause').innerHTML=icon('pause',22);
-  $('#btn-pause').disabled=false;$('#btn-stop').disabled=false;$('#btn-mark').disabled=false;
   setStateUI(false);
   show('rec');vibrate(12);
   requestAnimationFrame(()=>{fitCanvas()});
   frame();
-  setupSpeech();
   startKeepAlive(title);
   toast('Enregistrement démarré — vous pouvez éteindre l\u2019écran.','info',3000);
   btn.disabled=false;
 }
-function setEngine(mode,label){
-  const c=$('#engine-chip');if(!c)return;
-  c.classList.remove('on','err');
-  if(mode==='on')c.classList.add('on');
-  else if(mode==='err')c.classList.add('err');
-  $('#engine-txt').textContent=label;
-}
-const afterStopMsg=()=>CFG.key
-  ?' La transcription Whisper sera lancée à l\u2019arrêt, puis l\u2019IA rédigera le résumé.'
-  :' À l\u2019arrêt, activez la transcription gratuite Whisper — l\u2019IA rédigera ensuite le résumé.';
-function speechWarn(msg){const w=$('#speech-warn');w.textContent=msg+afterStopMsg();w.hidden=false}
 function setStateUI(paused){
   const st=$('#rec-state');
   st.classList.toggle('paused',paused);
@@ -1686,17 +1716,6 @@ function frame(){
   if(!rec||rec.status==='stopped')return;
   rec.lastFrame=performance.now();
   rec.raf=requestAnimationFrame(frame);
-  if(rec._pts!=null){
-    const ts=rec.lastFrame,dt=ts-rec._pts;
-    if(rec.status==='recording'&&rec.wantSpeech&&!rec.gotResult&&rec.level>0.06){
-      rec.voiceMs+=dt;
-      if(!rec.conflictWarned&&rec.voiceMs>6000&&nowMs()>12000){
-        rec.conflictWarned=true;setEngine('err','sans réponse');
-        speechWarn('Votre voix est bien captée, mais le moteur vocal du navigateur ne répond pas — sur Android, l\u2019enregistrement audio et la transcription en direct ne peuvent pas fonctionner ensemble.');
-      }
-    }
-    rec._pts=ts;
-  }
   $('#rec-timer').textContent=fmtClock(nowMs());
   if(rec.analyser&&rec.status==='recording'){
     rec.analyser.getByteTimeDomainData(rec.buf);
@@ -1713,81 +1732,17 @@ function drawWave(){
   const c=rec&&rec.wave;if(!c||!c._w)return;
   const g=c.getContext('2d');const W=c._w,H=c._h;
   g.clearRect(0,0,W,H);
-  g.strokeStyle='rgba(33,28,19,.18)';g.lineWidth=1;g.setLineDash([2,5]);
+  g.strokeStyle='rgba(237,238,232,.12)';g.lineWidth=1;g.setLineDash([2,5]);
   g.beginPath();g.moveTo(0,H/2);g.lineTo(W,H/2);g.stroke();g.setLineDash([]);
   const paused=rec.status!=='recording';
   const n=rec.hist.length;
   for(let i=0;i<n;i++){
     const x=W-(n-i)*3;if(x<2)continue;
     const h=Math.max(2,rec.hist[i]*H*.9);
-    const alpha=.22+.78*(i/n);
-    g.fillStyle=paused?'rgba(107,99,85,.55)':`rgba(216,57,30,${alpha.toFixed(3)})`;
+    const alpha=.2+.8*(i/n);
+    g.fillStyle=paused?'rgba(150,156,143,.5)':`rgba(255,122,26,${alpha.toFixed(3)})`;
     g.fillRect(x,(H-h)/2,2,h);
   }
-}
-function setLive(inter){
-  const el=$('#live-text');if(!rec)return;
-  const finals=rec.segments.map(s=>s.text).join(' ');
-  let html='';
-  if(finals)html+=`<span>${esc(finals)}</span>`;
-  if(inter)html+=(finals?' ':'')+`<span class="live-interim">${esc(inter)}</span>`;
-  if(!html)html='<span class="live-idle">La transcription en direct apparaîtra ici si le navigateur le permet — sinon, Whisper transcrira l\u2019enregistrement à l\u2019arrêt.</span>';
-  el.innerHTML=html;el.scrollTop=el.scrollHeight;
-  $('#live-words').textContent=wordCount(finals+(inter?' '+inter:''))+' mots';
-}
-function pushSegment(text){
-  const t=nowMs();
-  const words=wordCount(text);
-  const est=Math.min(t-(rec.lastEnd||0),Math.round(words/2.3*1000));
-  const start=Math.max(rec.lastEnd||0,t-est);
-  rec.segments.push({start,end:t,text});
-  rec.lastEnd=t;
-  setLive('');
-}
-function setupSpeech(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){
-    rec.wantSpeech=false;
-    setEngine('err','indisponible');
-    speechWarn('Ce navigateur ne propose pas de transcription vocale en direct.');
-    return;
-  }
-  let netFails=0;
-  const r=new SR();
-  r.lang='fr-FR';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;
-  r.onaudiostart=()=>{if(rec)setEngine('wait','à l\u2019écoute')};
-  r.onresult=e=>{
-    if(!rec||rec.status!=='recording')return;
-    let fin='',inter='';
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const res=e.results[i];
-      if(res.isFinal)fin+=res[0].transcript;else inter+=res[0].transcript;
-    }
-    netFails=0;
-    if((fin+inter).trim()){rec.gotResult=true;setEngine('on','en cours')}
-    if(fin.trim())pushSegment(fin.trim());
-    setLive(inter.trim());
-  };
-  r.onerror=e=>{
-    if(!rec)return;
-    const err=e.error;
-    if(err==='not-allowed'||err==='service-not-allowed'||err==='audio-capture'){
-      rec.wantSpeech=false;
-      setEngine('err',err==='audio-capture'?'micro occupé':'bloqué');
-      speechWarn(err==='audio-capture'
-        ?'Le navigateur n\u2019arrive pas à capter le micro pour la transcription en direct (l\u2019enregistrement audio garde la priorité).'
-        :'La transcription en direct a été refusée (autorisation ou réglage du navigateur).');
-    }else if(err==='network'){
-      netFails++;
-      if(netFails>=3){rec.wantSpeech=false;setEngine('err','hors ligne');speechWarn('Le moteur vocal du navigateur nécessite une connexion internet, indisponible pour le moment.')}
-    }
-  };
-  r.onend=()=>{
-    if(!rec||!rec.wantSpeech||rec.status!=='recording')return;
-    rec.restartT=setTimeout(()=>{try{r.start()}catch(e){}},250);
-  };
-  try{r.start()}catch(e){rec.restartT=setTimeout(()=>{try{r.start()}catch(e2){}},400)}
-  rec.sr=r;
 }
 function setPause(p){
   if(!rec||rec.status==='stopped')return;
@@ -1795,11 +1750,9 @@ function setPause(p){
     if(rec.mr&&rec.mr.state==='recording')rec.mr.pause();
     rec.status='paused';
     rec.accum+=performance.now()-rec.activeStart;rec.activeStart=null;
-    try{rec.sr&&rec.sr.stop()}catch(e){}
   }else{
     if(rec.mr&&rec.mr.state==='paused')rec.mr.resume();
     rec.status='recording';rec.activeStart=performance.now();
-    try{rec.sr&&rec.sr.start()}catch(e){}
   }
   setStateUI(p);
 }
@@ -1808,14 +1761,13 @@ async function finalize(){
   const dur=nowMs();
   rec.status='stopped';
   $('#btn-pause').disabled=true;$('#btn-stop').disabled=true;$('#btn-mark').disabled=true;
-  cancelAnimationFrame(rec.raf);clearTimeout(rec.restartT);
-  const sr=rec.sr,mr=rec.mr,ctx=rec.ctx;
-  try{if(sr){sr.onend=null;sr.onresult=null;sr.onerror=null;sr.stop()}}catch(e){}
+  cancelAnimationFrame(rec.raf);
+  const mr=rec.mr,ctx=rec.ctx;
   try{if(ctx)await ctx.close()}catch(e){}
   rec.stream.getTracks().forEach(t=>t.stop());
   stopKeepAlive();
-  const {title,type,mime,segments,marks}=rec;
-  const chunks=rec.chunks;
+  const {title,type,mime}=rec;
+  const chunks=rec.chunks,marks=rec.marks;
   rec=null;
   let blob=null;
   if(mr&&mr.state!=='inactive'){
@@ -1824,7 +1776,7 @@ async function finalize(){
   if(chunks.length)blob=new Blob(chunks,{type:mime||'audio/webm'});
   if(dur<1500){toast('Enregistrement trop court — abandonné.','warn');show('home');return}
   const ext=blob?blobExt(blob):'webm';
-  const sess={id:uid(),title:title||'Enregistrement',type,createdAt:Date.now(),durationMs:dur,segments,marks,docHTML:null,audioExt:ext};
+  const sess={id:uid(),title:title||'Enregistrement',type,createdAt:Date.now(),durationMs:dur,segments:[],marks,docHTML:null,audioExt:ext};
   if(blob)await dbPut('audio',{id:sess.id,blob});
   await dbPut('sessions',sess);
   state.current=sess;
@@ -1838,13 +1790,10 @@ async function finalize(){
   resetPlayerUI();
   refreshHome();
   let choice='proceed';
-  if(!segments.length){
-    choice=await askPostRecord(sess,!!blob);
-    if(choice==='api'){await runApiTranscription(sess)}
-    else if(choice==='local'){await runLocalTranscription(sess)}
-    else if(choice==='settings'){state.pending=sess;openSettings()}
-  }
-  if(choice==='settings')return;
+  choice=await askPostRecord(sess,!!blob);
+  if(choice==='api'){await runApiTranscription(sess)}
+  else if(choice==='local'){await runLocalTranscription(sess)}
+  else if(choice==='settings'){state.pending=sess;openSettings();return}
   if(sess.segments.length&&AI.ready){
     const okAI=await runAIDraft(sess);
     if(okAI){refreshHome();return}
@@ -1854,8 +1803,7 @@ async function finalize(){
 function discardRecording(){
   if(!rec)return;
   rec.status='stopped';
-  cancelAnimationFrame(rec.raf);clearTimeout(rec.restartT);
-  try{if(rec.sr){rec.sr.onend=null;rec.sr.stop()}}catch(e){}
+  cancelAnimationFrame(rec.raf);
   try{if(rec.ctx)rec.ctx.close()}catch(e){}
   try{if(rec.mr&&rec.mr.state!=='inactive')rec.mr.stop()}catch(e){}
   rec.stream.getTracks().forEach(t=>t.stop());
@@ -1864,13 +1812,11 @@ function discardRecording(){
   show('home');
   toast('Enregistrement abandonné.','info');
 }
-/* Retour de l'arrière-plan : reprise de l'interface + message de continuité */
 document.addEventListener('visibilitychange',()=>{
   if(!rec||rec.status==='stopped')return;
   if(document.visibilityState==='visible'){
     fitCanvas();
     if(performance.now()-(rec.lastFrame||0)>2500){cancelAnimationFrame(rec.raf);frame();}
-    if(rec.wantSpeech&&!rec.gotResult&&rec.sr){try{rec.sr.start()}catch(e){}}
     if(rec.wasHidden){
       rec.wasHidden=false;
       toast('L\u2019enregistrement a continué en arrière-plan — '+fmtClock(nowMs())+' au compteur.','info',3200);
@@ -1879,7 +1825,6 @@ document.addEventListener('visibilitychange',()=>{
     rec.wasHidden=true;
   }
 });
-/* Chien de garde : relance la boucle d'affichage si elle a été suspendue */
 setInterval(()=>{
   if(rec&&rec.status!=='stopped'&&performance.now()-(rec.lastFrame||0)>3500){
     cancelAnimationFrame(rec.raf);frame();
@@ -1924,20 +1869,29 @@ function wirePlayer(){
   });
 }
 
-/* ==================== EXPORTS ==================== */
-/* Export PDF avec choix des parties (Résumé / Notions / Transcription) */
+/* ==================== EXPORT PDF (FICHIER DIRECT) ==================== */
 const PRINT_GROUPS=[
   {k:'resume',label:'Résumé',desc:'Vue d\u2019ensemble, plan, points clés, décisions et actions.'},
   {k:'notions',label:'Notions & références',desc:'Notions clés, définitions et liens pour approfondir.'},
   {k:'transcript',label:'Transcription intégrale',desc:'Le texte intégral horodaté de l\u2019enregistrement.'}
 ];
+async function ensureJsPDF(){
+  if(window.jspdf&&window.jspdf.jsPDF)return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=res;s.onerror=()=>rej(new Error('chargement impossible'));
+    document.head.appendChild(s);
+  });
+  if(!(window.jspdf&&window.jspdf.jsPDF))throw new Error('jsPDF indisponible');
+}
 function exportPDF(){
   let sel={resume:true,notions:false,transcript:false};
   try{sel=Object.assign(sel,JSON.parse(localStorage.getItem('echo_print_sel')||'{}'))}catch(e){}
   const root=$('#modal-root');
   root.innerHTML=`<div class="modal-overlay"></div>
-    <div class="modal"><h3>Exporter en PDF</h3>
-    <p>Cochez les parties à inclure dans le document imprimé.</p>
+    <div class="modal"><h3>Enregistrer le PDF</h3>
+    <p>Cochez les parties à inclure dans le fichier.</p>
     <div class="print-checks">
       ${PRINT_GROUPS.map(g=>`
         <button class="check-row${sel[g.k]?' on':''}" data-k="${g.k}" type="button">
@@ -1946,24 +1900,117 @@ function exportPDF(){
         </button>`).join('')}
     </div>
     <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
-    <button class="btn-primary" data-yes="1" style="height:44px">${icon('printer',16)} Imprimer</button></div></div>`;
+    <button class="btn-primary" data-yes="1" style="height:44px">${icon('download',16)}<span>Enregistrer le PDF</span></button></div></div>`;
   const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
   requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
   const close=()=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>root.innerHTML='',250)};
-  const cancel=()=>close();
+  ov.onclick=close;
+  m.querySelector('[data-no]').onclick=close;
   root.querySelectorAll('.check-row').forEach(b=>b.addEventListener('click',()=>{
     sel[b.dataset.k]=!sel[b.dataset.k];
     b.classList.toggle('on',sel[b.dataset.k]);
   }));
-  m.querySelector('[data-no]').onclick=cancel;
-  ov.onclick=cancel;
-  m.querySelector('[data-yes]').onclick=()=>{
-    if(!sel.resume&&!sel.notions&&!sel.transcript){toast('Cochez au moins une partie à imprimer.','warn');return}
+  m.querySelector('[data-yes]').onclick=async()=>{
+    if(!sel.resume&&!sel.notions&&!sel.transcript){toast('Cochez au moins une partie.','warn');return}
     localStorage.setItem('echo_print_sel',JSON.stringify(sel));
+    const yes=m.querySelector('[data-yes]');
+    yes.disabled=true;
     close();
-    setTimeout(()=>doPrint(sel),320);
+    await doSavePDF(sel);
   };
 }
+async function doSavePDF(sel){
+  const s=state.current;
+  if(!s||!s.docHTML){toast('Aucun document à exporter.','warn');return}
+  try{
+    await ensureJsPDF();
+  }catch(e){
+    toast('Générateur PDF indisponible (hors ligne ?) — repli sur l\u2019impression.','warn',3800);
+    doPrint(sel);
+    return;
+  }
+  try{
+    buildPDF(sel,s);
+    toast('PDF enregistré.','ok');
+  }catch(e){
+    toast('Génération du PDF impossible : '+(e&&e.message?e.message:'erreur')+' — repli sur l\u2019impression.','warn',4200);
+    doPrint(sel);
+  }
+}
+function buildPDF(sel,s){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF('p','pt','a4');
+  const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
+  const M=56,CW=W-2*M;
+  const INK='#1C1B16',GRAY='#71716A',ORANGE='#C2410C',GREEN='#15803D';
+  let y=M+6;
+  const para=(t,o={})=>{
+    if(!t)return;
+    const size=o.size||10.5;
+    doc.setFont(o.font||'helvetica',o.style||'normal');
+    doc.setFontSize(size);
+    doc.setTextColor(o.color||INK);
+    const lh=size*(o.lh||1.5);
+    doc.splitTextToSize(String(t),CW).forEach(line=>{
+      if(y+lh>H-M){doc.addPage();y=M}
+      doc.text(line,M,y+size);y+=lh;
+    });
+    y+=(o.gap!=null?o.gap:8);
+  };
+  const stampOf=el=>{const k=el.querySelector('.kt,.tstamp');return k?'['+k.textContent.trim()+'] ':''};
+  const restText=el=>{const c=el.cloneNode(true);c.querySelectorAll('.kt,.tstamp,.sec-tools').forEach(n=>n.remove());return (c.textContent||'').replace(/\s+/g,' ').trim()};
+  const root=$('#doc-body');
+  const keep=el=>{const g=el.closest('[data-print-group]');return !g||!!sel[g.dataset.printGroup]};
+  /* En-tête */
+  para('ÉCHO — DOCUMENT DE SYNTHÈSE',{size:7.5,color:ORANGE,style:'bold',gap:6,lh:1.3});
+  para(s.title,{size:21,style:'bold',lh:1.25,gap:6});
+  para(fmtDate(s.createdAt)+'  ·  '+fmtDurLong(s.durationMs),{size:8,color:GRAY,gap:16});
+  const lead=root.querySelector('.doc-lead');
+  if(lead&&keep(lead))para(lead.textContent.trim(),{size:11,style:'italic',color:'#44443E',lh:1.55,gap:14});
+  /* Sections */
+  root.querySelectorAll('.sec').forEach(sec=>{
+    if(!keep(sec))return;
+    if(y>H-M-70){doc.addPage();y=M}
+    const t=sec.querySelector('.sec-title');
+    const ts=sec.querySelector('.tstamp');
+    para((t?t.textContent.trim():'')+(ts?'   ·   '+ts.textContent.trim():''),{size:13,style:'bold',color:ORANGE,gap:5,lh:1.3});
+    const body=sec.querySelector('.sec-body');
+    if(!body){y+=8;return}
+    body.querySelectorAll(':scope > p, :scope > ul, :scope > div').forEach(el=>{
+      if(!keep(el))return;
+      if(el.tagName==='P'){
+        para(restText(el),{size:10.5,lh:1.6,gap:8});
+      }else if(el.classList.contains('keylist')){
+        el.querySelectorAll(':scope > li').forEach(li=>{
+          para('\u2022  '+stampOf(li)+restText(li),{size:10.5,lh:1.55,gap:6});
+        });
+        y+=5;
+      }else if(el.classList.contains('notion')){
+        const term=el.querySelector('.notion-term');
+        const meta=el.querySelector('.notion-meta');
+        para((term?term.textContent.trim():'Notion')+(meta?'   '+stampOf(meta):''),{size:11.5,style:'italic',color:GREEN,gap:4});
+        const def=el.querySelector(':scope > p, :scope > blockquote');
+        if(def)para(restText(def),{size:10,lh:1.55,gap:4});
+        const links=[...el.querySelectorAll('.notion-links a')].map(a=>a.getAttribute('href')).filter(Boolean);
+        if(links.length)para('Références : '+links.join('   \u00b7   '),{size:8,color:GREEN,lh:1.5,gap:10});
+      }else if(el.classList.contains('tr-lines')){
+        el.querySelectorAll(':scope > .tr-line').forEach(tr=>{
+          para(stampOf(tr)+restText(tr),{size:9.5,lh:1.5,gap:5});
+        });
+      }else if(el.classList.contains('note-block')){
+        const nt=el.querySelector('.note-text');
+        para('Précision — '+(nt&&nt.textContent.trim()?nt.textContent.trim():restText(el)),{size:10,lh:1.55,gap:10});
+      }
+    });
+    y+=12;
+  });
+  /* Colophon */
+  if(y>H-M-30)doc.addPage(),y=M;
+  doc.setDrawColor(200);doc.line(M,y,W-M,y);y+=14;
+  para('Généré par Écho — synthèse "'+PRINT_GROUPS.filter(g=>sel[g.k]).map(g=>g.label).join(' + ')+'". Les horodatages renvoient à l\u2019enregistrement audio d\u2019origine.',{size:7.5,color:GRAY,gap:0,lh:1.5});
+  doc.save(slug(s.title)+'.pdf');
+}
+/* Repli : impression navigateur si jsPDF indisponible */
 function doPrint(sel){
   const hidden=[];
   $$('#doc-body [data-print-group]').forEach(el=>{
@@ -1972,12 +2019,12 @@ function doPrint(sel){
   const restore=()=>{
     hidden.forEach(el=>{el.style.display=''});
     window.removeEventListener('afterprint',restore);
-    clearTimeout(fallback);
+    clearTimeout(fb);
   };
-  const fallback=setTimeout(restore,90000);
+  const fb=setTimeout(restore,90000);
   window.addEventListener('afterprint',restore);
   toast('Dans la fenêtre d\u2019impression, choisissez « Enregistrer au format PDF ».','info',3400);
-  setTimeout(()=>{try{window.print()}catch(e){restore();toast('Impression impossible sur ce navigateur.','warn')}},450);
+  setTimeout(()=>{try{window.print()}catch(e){restore();toast('Impression impossible.','warn')}},450);
 }
 function exportAudio(){
   const s=state.current;if(!s)return;
@@ -1985,30 +2032,31 @@ function exportAudio(){
   downloadBlob(state.audioBlob,slug(s.title)+'.'+(s.audioExt||'webm'));
   toast('Audio téléchargé.','ok');
 }
-const DOC_STYLES=`body{background:#f1ece2;margin:0;padding:36px 16px;font-family:Georgia,serif;color:#211c13}
-main{max-width:720px;margin:0 auto;background:#fbf8f1;padding:38px 30px;border-left:2px solid rgba(216,57,30,.35)}
-.doc-eyebrow{font:600 10px monospace;letter-spacing:.2em;text-transform:uppercase;color:#a2260f}
+const DOC_STYLES=`body{background:#141712;margin:0;padding:36px 16px;font-family:Georgia,serif;color:#EDEEE8}
+main{max-width:720px;margin:0 auto;background:#1A1E18;padding:38px 30px;border-left:2px solid #FF7A1A;border-radius:12px}
+.doc-eyebrow{font:600 10px monospace;letter-spacing:.2em;text-transform:uppercase;color:#FF7A1A}
 .doc-title{font-size:34px;margin:10px 0 8px;line-height:1.1}
-.doc-meta{font:11px monospace;color:#6b6355;text-transform:uppercase;letter-spacing:.08em}
-.doc-lead{font-style:italic;color:#6b6355;margin:16px 0}
-.sec{border-top:1px solid rgba(33,28,19,.15);padding:20px 0}
-.sec-n{font:600 11px monospace;color:#a2260f}
+.doc-meta{font:11px monospace;color:#969C8F;text-transform:uppercase;letter-spacing:.08em}
+.doc-lead{font-style:italic;color:#969C8F;margin:16px 0}
+.sec{border-top:1px solid rgba(237,238,232,.12);padding:20px 0}
+.sec-n{font:600 11px monospace;color:#FF7A1A}
 .sec-title{font-size:22px;margin:4px 0 10px;display:inline-block;margin-left:10px}
 .sec-body p{font-size:16px;line-height:1.6;margin-bottom:10px}
 .sub-head{font-size:17px;margin:18px 0 6px}
-.kt{font:11px monospace;color:#a2260f;margin-right:8px}
+.kt{font:11px monospace;color:#FF7A1A;margin-right:8px}
 .keylist{list-style:none;padding:0}
-.keylist li{padding:10px 0 10px 24px;border-top:1px dashed rgba(33,28,19,.2);position:relative;font-size:15px;line-height:1.55}
-.keylist li::before{content:"";position:absolute;left:3px;top:16px;width:7px;height:7px;background:#d8391e}
-.notion{padding:14px 0;border-top:1px dashed rgba(33,28,19,.2)}
-.notion-term{font-size:19px;font-style:italic;font-weight:600}
-.notion-meta{font:11px monospace;color:#6b6355;margin-left:10px}
+.keylist li{padding:10px 0 10px 24px;border-top:1px dashed rgba(237,238,232,.15);position:relative;font-size:15px;line-height:1.55}
+.keylist li::before{content:"";position:absolute;left:3px;top:16px;width:7px;height:7px;background:#FF7A1A}
+.notion{padding:14px 0;border-top:1px dashed rgba(237,238,232,.15)}
+.notion-term{font-size:19px;font-style:italic;font-weight:600;color:#4ADE80}
+.notion-meta{font:11px monospace;color:#969C8F;margin-left:10px}
 .notion-links{margin-top:4px;font-size:13px}
-.note-block{background:rgba(216,57,30,.06);border-left:3px solid #d8391e;padding:12px 14px;margin:12px 0}
-.note-tag{font:600 9px monospace;letter-spacing:.18em;text-transform:uppercase;color:#a2260f}
-.tr-line{display:flex;gap:12px;padding:7px 0;border-top:1px solid rgba(33,28,19,.07);font-size:14px;line-height:1.5}
-.tr-t{min-width:44px;text-align:right;font:11px monospace;color:#a2260f}
-.doc-colophon{margin-top:24px;padding-top:10px;border-top:1px solid #ccc;font:10px monospace;color:#666}`;
+.notion-links a{color:#4ADE80}
+.note-block{background:rgba(255,122,26,.08);border-left:3px solid #FF7A1A;padding:12px 14px;margin:12px 0}
+.note-tag{font:600 9px monospace;letter-spacing:.18em;text-transform:uppercase;color:#FF7A1A}
+.tr-line{display:flex;gap:12px;padding:7px 0;border-top:1px solid rgba(237,238,232,.06);font-size:14px;line-height:1.5}
+.tr-t{min-width:44px;text-align:right;font:11px monospace;color:#FF7A1A}
+.doc-colophon{margin-top:24px;padding-top:10px;border-top:1px solid rgba(237,238,232,.15);font:10px monospace;color:#969C8F}`;
 function exportHTML(){
   const s=state.current;if(!s||!s.docHTML)return;
   const html='<!DOCTYPE html>\n<html lang="fr"><head><meta charset="utf-8">'
@@ -2039,14 +2087,14 @@ function renderLib(all){
   $('#lib-count').textContent=all.length?all.length+' enregistrement'+(all.length>1?'s':''):'';
   const root=$('#lib-list');
   if(!all.length){
-    root.innerHTML=`<div class="lib-empty">${icon('docic',22)}<span>Aucun enregistrement pour l'instant.<br>Le premier que vous arrêterez apparaîtra ici, avec son résumé IA prêt à exporter.</span></div>`;
+    root.innerHTML=`<div class="lib-empty">${icon('docic',22)}<span>Aucun enregistrement pour l'instant.<br>Enregistrez ou importez un audio — il apparaîtra ici avec son résumé, prêt à exporter.</span></div>`;
     return;
   }
   root.innerHTML=all.map(s=>`
     <div class="lib-item" data-id="${s.id}">
       <div class="lib-main" data-open="1">
         <div class="lib-title">${esc(s.title)}</div>
-        <div class="lib-meta">${esc(fmtDate(s.createdAt))} · ${fmtClock(s.durationMs)} · ${wordCount(s.segments.map(x=>x.text).join(' '))} mots</div>
+        <div class="lib-meta">${s.imported?'Importé · ':''}${esc(fmtDate(s.createdAt))} · ${fmtClock(s.durationMs)} · ${wordCount(s.segments.map(x=>x.text).join(' '))} mots</div>
       </div>
       <span class="lib-type">${esc(TYPE_LABEL[s.type]||'').toUpperCase()}</span>
       <button class="icon-btn lib-del" data-del="1" title="Supprimer">${icon('trash',16)}</button>
@@ -2075,47 +2123,7 @@ function wireLib(){
   });
 }
 
-/* ==================== PWA : MANIFESTE + SERVICE WORKER ==================== */
-function makeIcon(size){
-  const c=document.createElement('canvas');c.width=c.height=size;
-  const g=c.getContext('2d');
-  g.fillStyle='#F1ECE2';g.fillRect(0,0,size,size);
-  const u=size/24,cx=12*u,cy=12*u;
-  g.strokeStyle='#A2260F';g.lineCap='round';
-  const arc=(r,w,a0,a1)=>{g.lineWidth=w;g.beginPath();g.arc(cx,cy,r,a0,a1);g.stroke()};
-  arc(4.4*u,1.8*u,Math.PI*.64,Math.PI*1.36);
-  arc(4.4*u,1.8*u,-Math.PI*.36,Math.PI*.36);
-  arc(8*u,1.8*u,Math.PI*.68,Math.PI*1.32);
-  arc(8*u,1.8*u,-Math.PI*.32,Math.PI*.32);
-  g.fillStyle='#D8391E';
-  g.beginPath();g.arc(cx,cy,2*u,0,7);g.fill();
-  return c.toDataURL('image/png');
-}
-/* Le manifeste est construit à l'exécution (icônes générées par canvas) :
-   il rend l'application installable via « Ajouter à l'écran d'accueil »
-   sans dépendre d'un fichier manifest.json externe. */
-function setupPWA(){
-  try{
-    const icons=[192,512].map(s=>({src:makeIcon(s),sizes:s+'x'+s,type:'image/png'}));
-    const manifest={
-      name:'Écho — enregistreur & carnet',short_name:'Écho',
-      description:'Enregistrez, transcrivez et résumez cours, réunions et conversations.',
-      start_url:location.href.split('#')[0],display:'standalone',
-      background_color:'#F1ECE2',theme_color:'#F1ECE2',icons
-    };
-    const l=document.createElement('link');
-    l.rel='manifest';
-    l.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'}));
-    document.head.appendChild(l);
-    const ico=document.createElement('link');
-    ico.rel='apple-touch-icon';ico.href=makeIcon(180);
-    document.head.appendChild(ico);
-  }catch(e){}
-}
-/* Un service worker ne peut pas être créé depuis un fichier HTML unique
-   (les navigateurs exigent une URL de script http/https). Son code est donc
-   embarqué ici : l'app l'enregistre si un sw.js est présent à côté de la page
-   (hébergement), et propose sinon de le télécharger. */
+/* ==================== SERVICE WORKER ==================== */
 const SW_SRC=`/* Écho — service worker : cache hors ligne de l'application */
 const CACHE='echo-v1';
 self.addEventListener('install',e=>{
@@ -2142,15 +2150,15 @@ self.addEventListener('fetch',e=>{
 async function setupSW(){
   const st=$('#pwa-status');if(!st)return;
   st.className='set-status';
-  if(!('serviceWorker' in navigator)){st.textContent='Service worker non supporté — l\u2019installation reste possible via le manifeste.';return}
-  if(location.protocol==='file:'){st.textContent='Page ouverte en local : l\u2019application fonctionne déjà hors ligne par nature. Pour l\u2019icône et le plein écran, utilisez « Ajouter à l\u2019écran d\u2019accueil » si votre navigateur le propose.';return}
+  if(!('serviceWorker' in navigator)){st.textContent='Service worker non supporté par ce navigateur.';return}
+  if(location.protocol==='file:'){st.textContent='Page ouverte en local : l\u2019application fonctionne déjà hors ligne par nature.';return}
   if(location.protocol!=='https:'&&location.hostname!=='localhost'){st.textContent='Le service worker nécessite le protocole https.';return}
   try{
     await navigator.serviceWorker.register('sw.js');
-    st.textContent='Service worker actif — l\u2019application s\u2019ouvre sans connexion sur cet hébergement.';
+    st.textContent='Service worker actif — l\u2019application s\u2019ouvre sans connexion.';
     st.className='set-status ok';
   }catch(e){
-    st.textContent='Aucun fichier sw.js trouvé à côté de la page — téléchargez-le ci-dessous et placez-le au même endroit pour activer le hors ligne.';
+    st.textContent='Aucun fichier sw.js trouvé à côté de la page — téléchargez-le ci-dessous et placez-le au même endroit.';
     st.className='set-status err';
   }
 }
@@ -2167,13 +2175,13 @@ function updateHomeBanner(){
   const b=$('#setup-banner');
   if(CFG.key&&AI.ready){
     b.classList.add('ready');
-    b.innerHTML=icon('check',18)+'<span>Transcription Whisper et résumé IA actives — via votre clé Groq (GPT-OSS 120B rédige les résumés).</span>';
+    b.innerHTML=icon('check',18)+'<span>Transcription Whisper et résumé IA actives — via votre clé Groq.</span>';
   }else if(AI.ready){
     b.classList.remove('ready');
     b.innerHTML=icon('key',18)+'<span><b>Résumé IA prêt.</b> Activez aussi la transcription Whisper (clé Groq gratuite) pour le flux complet.</span>';
   }else{
     b.classList.remove('ready');
-    b.innerHTML=icon('key',18)+'<span><b>Activez la transcription et le résumé IA</b> — une clé Groq gratuite suffit (2 minutes, sans carte bancaire). Z.ai, Qwen et OpenRouter sont aussi pris en charge.</span>';
+    b.innerHTML=icon('key',18)+'<span><b>Activez la transcription et le résumé IA</b> — une clé Groq gratuite suffit (2 minutes, sans carte bancaire).</span>';
   }
 }
 function openSettings(){
@@ -2237,7 +2245,7 @@ function wireSettings(){
       const r=await testGroqKey(raw||CLE_API_PAR_DEFAUT);
       if(r.ok){
         CFG.key=raw;
-        st.textContent='Clé valide — transcription Whisper et résumé IA (GPT-OSS 120B) sont actifs.';
+        st.textContent='Clé valide — transcription Whisper et résumé IA sont actifs.';
         st.className='set-status ok';
         $('#btn-forget').hidden=!raw;
         updateApiPill();updateHomeBanner();refreshAIFields();vibrate(10);
@@ -2263,7 +2271,6 @@ function wireSettings(){
     $$('.model-card[data-model]').forEach(x=>x.classList.toggle('active',x===c));
   }));
   $('#lang-select').addEventListener('change',e=>{CFG.lang=e.target.value});
-  /* Rédaction IA */
   $$('.prov-cards .model-card').forEach(c=>c.addEventListener('click',()=>{
     AI.provider=c.dataset.prov;
     refreshAIFields();
@@ -2286,7 +2293,7 @@ function wireSettings(){
         fn:()=>{AI.model=m;$('#ai-model-input').value=m;toast('Modèle de rédaction : '+m,'ok',1800)}
       })));
     }catch(e){
-      toast('Liste des modèles indisponible ('+(e&&e.message?e.message:'erreur')+') — vérifiez la clé ou le réseau, ou saisissez le nom manuellement.','warn',4600);
+      toast('Liste des modèles indisponible — vérifiez la clé ou le réseau, ou saisissez le nom manuellement.','warn',4600);
     }
     btn.disabled=false;btn.innerHTML=old;
   });
@@ -2301,7 +2308,7 @@ function wireSettings(){
     try{
       const out=await aiChat([{role:'user',content:'Réponds exactement par ce mot : prêt'}],{maxTokens:1500,json:false});
       if(!String(out).trim())throw new Error('réponse vide du modèle');
-      st.textContent='Fournisseur opérationnel — modèle '+AI.model+' (remplacé automatiquement si un jour il devient indisponible).';
+      st.textContent='Fournisseur opérationnel — modèle '+AI.model+'.';
       st.className='set-status ok';
       $('#ai-btn-forget').hidden=!storedAIKey();
       updateApiPill();updateHomeBanner();vibrate(10);
@@ -2321,12 +2328,12 @@ function wireSettings(){
   });
   $('#btn-sw-dl').addEventListener('click',()=>{
     downloadBlob(new Blob([SW_SRC],{type:'application/javascript'}),'sw.js');
-    toast('Fichier sw.js téléchargé — placez-le à côté de la page HTML sur votre hébergement.','info',4200);
+    toast('Fichier sw.js téléchargé — placez-le à côté de la page sur votre hébergement.','info',4200);
   });
   $('#setup-banner').addEventListener('click',openSettings);
   $('#btn-settings').addEventListener('click',openSettings);
   $('#api-pill').addEventListener('click',openSettings);
-  $('#set-privacy').innerHTML=icon('lock',15)+'<span>Les clés restent stockées uniquement dans ce navigateur — ne les partagez pas. Pendant une transcription ou une rédaction, l\u2019audio ou le texte est envoyé au fournisseur choisi le temps du traitement, puis le résultat revient sur votre appareil. Tout le reste (audio, documents, analyses locales) reste local.</span>';
+  $('#set-privacy').innerHTML=icon('lock',15)+'<span>Les clés restent stockées uniquement dans ce navigateur — ne les partagez pas. Pendant une transcription ou une rédaction, l\u2019audio ou le texte est envoyé au fournisseur choisi le temps du traitement. Tout le reste reste local.</span>';
 }
 
 /* ==================== LIAISONS GÉNÉRALES ==================== */
@@ -2353,11 +2360,12 @@ function wire(){
   $('#btn-mark').innerHTML=icon('bookmark',21);
   $('#btn-back').innerHTML=icon('chevl',18);
   $('#btn-menu').innerHTML=icon('dots',18);
-  $('#btn-pdf').innerHTML=icon('printer',16)+'<span>PDF</span>';
+  $('#btn-pdf').innerHTML=icon('download',16)+'<span>PDF</span>';
   $('#btn-regen').innerHTML=icon('refresh',15)+'<span>Régénérer (analyse locale) depuis cette transcription</span>';
   $('#ring-core').innerHTML=icon('mic',30);
   $('#raw-details').querySelector('summary').insertAdjacentHTML('beforeend',icon('chevd',16));
   $('#ai-btn-models').innerHTML=icon('refresh',14)+'<span>Charger les modèles disponibles</span>';
+  $('#btn-import').innerHTML=icon('upload',17)+'<span>Importer un audio</span>';
   $('#bg-hint').innerHTML=icon('moon',15)+'<span>Vous pouvez éteindre l\u2019écran : l\u2019enregistrement continue en arrière-plan (Android / Chrome).</span>';
   $('#privacy-hint').innerHTML=icon('lock',15)+'<span>L\u2019audio et les documents restent sur votre appareil. La transcription et le résumé IA passent par le fournisseur choisi, uniquement le temps du traitement.</span>';
   const segs={cours:['book','Cours'],reunion:['users','Réunion'],conversation:['chat','Conversation']};
@@ -2369,6 +2377,12 @@ function wire(){
     b.classList.add('active');state.newType=b.dataset.type;
   }));
   $('#btn-start').addEventListener('click',startSession);
+  $('#btn-import').addEventListener('click',()=>$('#file-import').click());
+  $('#file-import').addEventListener('change',e=>{
+    const f=e.target.files&&e.target.files[0];
+    e.target.value='';
+    if(f)importAudioFile(f);
+  });
   $('#btn-pause').addEventListener('click',()=>setPause(rec&&rec.status==='paused'?false:true));
   $('#btn-stop').addEventListener('click',finalize);
   $('#btn-mark').addEventListener('click',()=>{
@@ -2378,7 +2392,7 @@ function wire(){
   });
   $('#btn-abandon').addEventListener('click',async()=>{
     if(!rec)return;
-    const ok=await confirmDialog({title:'Abandonner l\u2019enregistrement ?',body:'L\u2019audio et la transcription en cours seront définitivement perdus.',ok:'Abandonner',danger:true});
+    const ok=await confirmDialog({title:'Abandonner l\u2019enregistrement ?',body:'L\u2019audio en cours sera définitivement perdu.',ok:'Abandonner',danger:true});
     if(ok)discardRecording();
   });
   $('#btn-back').addEventListener('click',()=>{
@@ -2427,7 +2441,7 @@ function wire(){
     dbPut('sessions',state.current).then(flashSaved);
   },800));
   $('#btn-regen').addEventListener('click',async()=>{
-    const ok=await confirmDialog({title:'Régénérer le document ?',body:'Le document actuel — y compris vos précisions — sera remplacé par une nouvelle analyse locale de la transcription brute. Pour un résumé rédigé par IA, préférez « Rédiger le résumé avec l\u2019IA » dans le menu ⋯.',ok:'Régénérer',danger:true});
+    const ok=await confirmDialog({title:'Régénérer le document ?',body:'Le document actuel sera remplacé par une nouvelle analyse locale de la transcription brute. Pour un résumé rédigé par IA, préférez « Rédiger le résumé avec l\u2019IA » dans le menu ⋯.',ok:'Régénérer',danger:true});
     if(!ok)return;
     const segs=parseRaw($('#raw-text').value);
     if(!segs.length){toast('La transcription est vide — rien à régénérer.','warn');return}
@@ -2442,13 +2456,13 @@ function wire(){
       items.push({icon:'spark',label:'Rédiger le résumé avec l\u2019IA',fn:async()=>{
         if(!s)return;
         if(s.docHTML){
-          const ok=await confirmDialog({title:'Rédiger le résumé IA ?',body:'Le document actuel — y compris vos éditions — sera remplacé par une nouvelle version rédigée par l\u2019IA à partir de la transcription.',ok:'Rédiger',danger:true});
+          const ok=await confirmDialog({title:'Rédiger le résumé IA ?',body:'Le document actuel — y compris vos éditions — sera remplacé par une nouvelle version rédigée par l\u2019IA.',ok:'Rédiger',danger:true});
           if(!ok)return;
         }
         await runAIDraft(s);
       }});
       items.push({icon:'refresh',label:'Ré-analyser localement (sans IA)',fn:async()=>{
-        const ok=await confirmDialog({title:'Analyse locale ?',body:'Le document sera régénéré par l\u2019analyse statistique locale (extraits, sans rédaction IA) à partir de la transcription. Vos éditions seront perdues.',ok:'Analyser',danger:true});
+        const ok=await confirmDialog({title:'Analyse locale ?',body:'Le document sera régénéré par l\u2019analyse statistique locale (extraits, sans rédaction IA). Vos éditions seront perdues.',ok:'Analyser',danger:true});
         if(!ok||!state.current)return;
         await composeAndShow(state.current);
       }});
@@ -2456,14 +2470,14 @@ function wire(){
     if(state.audioBlob){
       items.push({icon:'cloud',label:'Transcrire avec Whisper (qualité max)',fn:async()=>{
         if(!state.current)return;
-        const ok=await confirmDialog({title:'Re-transcrire l\u2019enregistrement ?',body:'La transcription et le document actuels — y compris vos éditions — seront remplacés par une nouvelle transcription Whisper.',ok:'Transcrire',danger:true});
+        const ok=await confirmDialog({title:'Re-transcrire l\u2019enregistrement ?',body:'La transcription et le document actuels seront remplacés par une nouvelle transcription Whisper.',ok:'Transcrire',danger:true});
         if(!ok)return;
         const done=await runApiTranscription(state.current);
         if(done)await runAIDraft(state.current);
       }});
       items.push({icon:'chip',label:'Transcrire sur l\u2019appareil (hors ligne)',fn:async()=>{
         if(!state.current)return;
-        const ok=await confirmDialog({title:'Transcrire sur l\u2019appareil ?',body:'Le modèle local est réduit : la qualité est nettement inférieure à Whisper large-v3. À réserver sans connexion.',ok:'Transcrire',danger:true});
+        const ok=await confirmDialog({title:'Transcrire sur l\u2019appareil ?',body:'Le modèle local est réduit : qualité nettement inférieure à Whisper. À réserver sans connexion.',ok:'Transcrire',danger:true});
         if(!ok)return;
         const done=await runLocalTranscription(state.current);
         if(done)await composeAndShow(state.current);
@@ -2473,9 +2487,9 @@ function wire(){
       {icon:'docic',label:'Transcription brute (modifier)',fn:()=>{const d=$('#raw-details');d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'})}},
       {icon:'download',label:'Télécharger l\u2019audio',fn:exportAudio},
       {icon:'docic',label:'Télécharger le document (HTML)',fn:exportHTML},
-      {icon:'printer',label:'Exporter en PDF',fn:exportPDF},
+      {icon:'download',label:'Enregistrer le PDF',fn:exportPDF},
       {icon:'trash',label:'Supprimer l\u2019enregistrement',danger:true,fn:async()=>{
-        const ok=await confirmDialog({title:'Supprimer l\u2019enregistrement ?',body:'L\u2019audio, la transcription et le document seront définitivement supprimés de cet appareil.',ok:'Supprimer',danger:true});
+        const ok=await confirmDialog({title:'Supprimer l\u2019enregistrement ?',body:'L\u2019audio, la transcription et le document seront définitivement supprimés.',ok:'Supprimer',danger:true});
         if(!ok||!state.current)return;
         await dbDel('sessions',state.current.id);await dbDel('audio',state.current.id);
         if(state.audioUrl){URL.revokeObjectURL(state.audioUrl);state.audioUrl=null}
