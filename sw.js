@@ -2,7 +2,7 @@
    Cache hors ligne de l'application.
    IMPORTANT : après chaque modification de index.html, changez VERSION
    (ex. 'echo-v2') pour que les utilisateurs reçoivent la mise à jour. */
-const VERSION = 'echo-v3';
+const VERSION = 'echo-v4';
 const CORE = [
   './',
   './index.html',

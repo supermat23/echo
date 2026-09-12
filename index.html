@@ -146,6 +146,7 @@ body[data-view="rec"] #topbar{display:none}
 .pl-speed{flex:none;min-width:46px;height:34px;border:1px solid var(--line-strong);border-radius:8px;font:600 12px var(--mono);color:var(--text)}
 .doc-actions{display:flex;gap:9px;align-items:center;margin:14px 0 18px}
 .doc-actions .btn-primary{height:44px;flex:1}
+.doc-actions #btn-txt{height:44px;flex:1}
 .doc-actions .btn-ghost{height:44px;padding:0 14px}
 .cta-transcribe{display:flex;gap:14px;align-items:center;justify-content:space-between;border:1.5px dashed var(--line-strong);border-radius:14px;padding:16px;margin:0 0 16px;background:var(--surface)}
 .cta-transcribe[hidden]{display:none}
@@ -426,6 +427,7 @@ body[data-view="rec"] #topbar{display:none}
       <button class="btn-ghost" id="btn-back" title="Retour"></button>
       <button class="btn-ghost" id="btn-edit"></button>
       <button class="btn-primary" id="btn-pdf"></button>
+      <button class="btn-ghost" id="btn-txt"></button>
       <button class="btn-ghost" id="btn-menu" title="Plus d'actions"></button>
     </div>
     <div class="cta-transcribe no-print" id="cta-transcribe" hidden>
@@ -2671,6 +2673,8 @@ function wire(){
   $('#btn-back').innerHTML=icon('chevl',18);
   $('#btn-menu').innerHTML=icon('dots',18);
   $('#btn-pdf').innerHTML=icon('download',16)+'<span>PDF</span>';
+  $('#btn-txt').innerHTML=icon('docic',16)+'<span>TXT</span>';
+  $('#btn-txt').addEventListener('click',exportTXT);
   $('#btn-regen').innerHTML=icon('refresh',15)+'<span>Régénérer (analyse locale) depuis cette transcription</span>';
   $('#ring-core').innerHTML=icon('mic',30);
   $('#raw-details').querySelector('summary').insertAdjacentHTML('beforeend',icon('chevd',16));
