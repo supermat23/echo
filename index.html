@@ -1268,35 +1268,52 @@ function blobExt(blob,fallback){
   }
   return 'webm';
 }
-async function blobToMono16k(blob){
+/* Décodage mémoire-sobre : directement à 16 kHz (plus d'intermédiaire
+   à 44,1/48 kHz qui atteignait ~1,9 Go pour 1 h 30 — c'est ce qui
+   faisait planter la conversion des fichiers longs). */
+async function decodeAudio16k(blob){
   const ab=await blob.arrayBuffer();
-  const AC=window.AudioContext||window.webkitAudioContext;
-  const actx=new AC();
-  const decoded=await new Promise((res,rej)=>{const p=actx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res).catch(rej)});
-  try{actx.close()}catch(e){}
-  const target=16000;
-  const frames=Math.max(1,Math.ceil(decoded.duration*target));
   const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
-  const off=new OAC(1,frames,target);
-  const src=off.createBufferSource();src.buffer=decoded;src.connect(off.destination);src.start(0);
-  const rendered=await new Promise((res,rej)=>{
-    const p=off.startRendering();
-    if(p&&p.then)p.then(res).catch(rej);
-    else off.oncomplete=e=>res(e.renderedBuffer);
+  let ctx=null;
+  try{ctx=new OAC(1,1,16000)}catch(e){}
+  if(!ctx||!ctx.decodeAudioData){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    ctx=new AC();
+  }
+  const decoded=await new Promise((res,rej)=>{
+    let done=false;
+    const ok=b=>{if(!done){done=true;res(b)}};
+    const err=e=>{if(!done){done=true;rej(e||new Error('décodage impossible'))}};
+    try{
+      const p=ctx.decodeAudioData(ab,ok,err);
+      if(p&&p.then)p.then(ok).catch(err);
+    }catch(e){err(e)}
   });
-  return rendered.getChannelData(0);
+  try{if(ctx.close&&!(ctx instanceof (window.OfflineAudioContext||window.webkitOfflineAudioContext||Object)))ctx.close()}catch(e){}
+  const chans=[];
+  for(let c=0;c<decoded.numberOfChannels;c++)chans.push(decoded.getChannelData(c));
+  return {chans,len:decoded.length,rate:decoded.sampleRate||16000};
 }
-function encodeWav(f32,sr){
-  const buf=new ArrayBuffer(44+f32.length*2);
-  const v=new DataView(buf);
-  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
-  ws(0,'RIFF');v.setUint32(4,36+f32.length*2,true);ws(8,'WAVE');ws(12,'fmt ');
-  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
-  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
-  ws(36,'data');v.setUint32(40,f32.length*2,true);
-  let o=44;
-  for(let i=0;i<f32.length;i++,o+=2){const s=Math.max(-1,Math.min(1,f32[i]));v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true)}
-  return new Blob([buf],{type:'audio/wav'});
+/* Tranche mono : simple vue (aucune copie) si la source est mono,
+   mixage des canaux uniquement sur la tranche demandée sinon. */
+function monoSlice(d,o,end){
+  if(d.chans.length===1)return d.chans[0].subarray(o,end);
+  const out=new Float32Array(end-o),n=d.chans.length;
+  for(let i=o;i<end;i++){let s=0;for(let c=0;c<n;c++)s+=d.chans[c][i];out[i-o]=s/n}
+  return out;
+}
+async function blobToMono16k(blob){
+  const d=await decodeAudio16k(blob);
+  const m=monoSlice(d,0,d.len);
+  if(Math.abs((d.rate||16000)-16000)<1)return m;
+  /* repli rarissime (navigateur qui ignore la fréquence demandée) : rééchantillonnage linéaire */
+  const ratio=d.rate/16000;
+  const out=new Float32Array(Math.floor(m.length/ratio));
+  for(let i=0;i<out.length;i++){
+    const x=i*ratio,j=Math.floor(x);
+    out[i]=j>=m.length-1?m[m.length-1]:m[j]+(m[j+1]-m[j])*(x-j);
+  }
+  return out;
 }
 async function groqPostPart(part,key,sess,signal,onPhase){
   for(let attempt=0;;attempt++){
@@ -1368,34 +1385,45 @@ async function runApiTranscription(sess){
       <button class="btn-skipc ai-cancel" id="api-cancel">Annuler</button>
     </div>`;
   const ctl=new AbortController();
+  grabWakeLock();
   $('#api-cancel').onclick=()=>ctl.abort();
   let timer=null;
   try{
     /* Format nativement accepté → envoi direct ; sinon conversion en WAV
        (découpage automatique si le fichier dépasse la limite d'envoi). */
-    let parts;
+        let decoded=null,rate=16000,chunkSamples=0,totalParts=1;
     const mime=String(blob.type||'').split(';')[0].trim().toLowerCase();
     if(blob.size<=MAX_UPLOAD&&GROQ_MIMES.test(mime)){
-      parts=[{blob,ext:blobExt(blob,sess.audioExt),offsetMs:0}];
+      /* format directement accepté et peu volumineux : envoi tel quel */
     }else{
-      $('#api-phase').textContent='Conversion de l\u2019audio';
-      $('#api-detail').textContent='Format non envoyable tel quel (ou fichier volumineux) : conversion automatique…';
-      const pcm=await blobToMono16k(blob);
-      const CH=5*60*16000;
-      parts=[];
-      for(let o=0;o<pcm.length;o+=CH){
-        parts.push({blob:encodeWav(pcm.subarray(o,Math.min(o+CH,pcm.length)),16000),ext:'wav',offsetMs:Math.round(o/16)});
+      $('#api-phase').textContent='Décodage de l\u2019audio';
+      $('#api-detail').textContent='Fichier volumineux ou format à convertir — décodage en 16 kHz, étape la plus longue (quelques minutes pour 1 h 30). Gardez l\u2019application ouverte…';
+      try{decoded=await decodeAudio16k(blob)}
+      catch(e){
+        throw new Error('décodage impossible — fichier illisible par ce navigateur ou mémoire insuffisante pour cette durée. Essayez de l\u2019exporter en MP3, ou de le découper en morceaux d\u2019une heure.');
       }
+      rate=decoded.rate||16000;
+      chunkSamples=Math.floor(20*1024*1024/2); /* ~20 Mo de WAV mono par envoi */
+      totalParts=Math.max(1,Math.ceil(decoded.len/chunkSamples));
     }
     const t0=performance.now();
     timer=setInterval(()=>{const el=$('#api-elapsed');if(el)el.textContent=fmtClock(performance.now()-t0)},500);
     const segs=[];
-    for(let i=0;i<parts.length;i++){
+    for(let i=0;i<totalParts;i++){
       if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
-      const base=parts.length>1?`Partie ${i+1}/${parts.length} — `:'';
+      const base=totalParts>1?`Partie ${i+1}/${totalParts} — `:'';
+      let part;
+      if(decoded){
+        const o=i*chunkSamples,end=Math.min(o+chunkSamples,decoded.len);
+        $('#api-phase').textContent=base+'Préparation de l\u2019extrait';
+        $('#api-detail').textContent=`Conversion de l\u2019extrait ${i+1}/${totalParts} en WAV mono…`;
+        part={blob:encodeWav(monoSlice(decoded,o,end),rate),ext:'wav',offsetMs:Math.round(o/rate*1000)};
+      }else{
+        part={blob,ext:blobExt(blob,sess.audioExt),offsetMs:0};
+      }
       $('#api-phase').textContent=base+'Envoi de l\u2019audio';
-      $('#api-detail').textContent=`Whisper ${shortModel()} · ${(parts[i].blob.size/1048576).toFixed(1)} Mo`;
-      const rs=await groqPostPart(parts[i],key,sess,ctl.signal,(label,detail)=>{
+      $('#api-detail').textContent=`Whisper ${shortModel()} · ${(part.blob.size/1048576).toFixed(1)} Mo`;
+      const rs=await groqPostPart(part,key,sess,ctl.signal,(label,detail)=>{
         const p=$('#api-phase'),d=$('#api-detail');
         if(p)p.textContent=label;
         if(d)d.textContent=detail;
@@ -1403,20 +1431,23 @@ async function runApiTranscription(sess){
       segs.push(...rs);
       $('#api-phase').textContent=base+'Transcription';
     }
+    decoded=null; /* libère la mémoire avant la suite */
     clearInterval(timer);timer=null;
     if(!segs.length)throw new Error('aucune parole détectée dans l\u2019enregistrement');
     sess.segments=segs;
     await dbPut('sessions',sess);
     composerHide();
     toast(`Transcription terminée — ${wordCount(segs.map(s=>s.text).join(' '))} mots.`,'ok',3200);
-    return true;
+    releaseWakeLock();
+	return true;
   }catch(e){
     if(timer)clearInterval(timer);
     composerHide();
     if(e&&e.name==='AbortError'){toast('Transcription annulée.','info');return false}
     const msg=e&&e.message?e.message:'erreur inconnue';
     toast('Transcription impossible : '+msg,'warn',5200);
-    return false;
+    releaseWakeLock();
+	return false;
   }
 }
 
