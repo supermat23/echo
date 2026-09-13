@@ -634,6 +634,26 @@ function toast(msg,type='ok',dur=2600){
   $('#toast-root').appendChild(el);requestAnimationFrame(()=>el.classList.add('in'));
   setTimeout(()=>{el.classList.remove('in');setTimeout(()=>el.remove(),300)},dur);
 }
+async function copyText(t){
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(t);
+      return true;
+    }
+  }catch(e){}
+  /* repli textarea (contextes non sécurisés / vieux navigateurs) */
+  return new Promise(res=>{
+    const ta=document.createElement('textarea');
+    ta.value=t;
+    ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus();ta.select();
+    let ok=false;
+    try{ok=document.execCommand('copy')}catch(e){}
+    ta.remove();
+    res(ok);
+  });
+}
 let _modalGen=0;
 function confirmDialog({title,body,ok='Confirmer',cancel='Annuler',danger=false}){
   return new Promise(res=>{
@@ -2788,6 +2808,54 @@ function flashSaved(){
   clearTimeout(flashSaved._t);
   flashSaved._t=setTimeout(()=>el.classList.remove('show'),1700);
 }
+function importAIReply(sess){
+  const root=$('#modal-root');
+  const g=++_modalGen;
+  root.innerHTML=`<div class="modal-overlay"></div>
+    <div class="modal" style="width:min(94vw,420px)"><h3>Importer la réponse IA</h3>
+    <p>Collez ci-dessous la réponse du modèle. Le JSON exact est idéal ({"vue_densemble":…}) — la structure du document sera identique à une rédaction interne. Un texte libre sera importé comme synthèse en clair.</p>
+    <textarea id="ai-reply" spellcheck="false" style="display:block;width:100%;min-height:170px;margin-top:10px;padding:12px;border:1.5px solid var(--line-strong);border-radius:11px;background:var(--bg);color:var(--text);font:400 12px/1.6 var(--mono);resize:vertical" placeholder='{"vue_densemble":"…","sections":[…],"notions":[…],"points_cles":[…]}'></textarea>
+    <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
+    <button class="btn-primary" data-yes="1" style="height:44px">${icon('check',15)}<span>Importer</span></button></div></div>`;
+  const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
+  requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
+  const close=()=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250)};
+  ov.onclick=close;
+  m.querySelector('[data-no]').onclick=close;
+  m.querySelector('[data-yes]').onclick=async()=>{
+    const raw=m.querySelector('#ai-reply').value.trim();
+    if(!raw){toast('Collez d\u2019abord la réponse du modèle.','warn');return}
+    let D=null,isJSON=false;
+    try{D=extractJSON(raw);isJSON=true}catch(e){}
+    close();
+    if(isJSON&&D&&(D.vue_densemble||(D.sections&&D.sections.length)||(D.points_cles&&D.points_cles.length))){
+      try{
+        sess.aiModel='importé (assistant externe)';
+        sess.docHTML=buildAIDocHTML(D,sess);
+        await dbPut('sessions',sess);
+        renderDocBody(sess);
+        show('doc');
+        toast('Réponse importée — document composé comme une rédaction IA.','ok',3600);
+      }catch(e){
+        toast('JSON compris mais document impossible : '+(e&&e.message?e.message:'erreur'),'warn',4200);
+      }
+    }else{
+      /* texte libre → synthèse en clair */
+      const paragraphs=raw.split(/\n{2,}/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
+      if(!paragraphs.length){toast('Réponse vide.','warn');return}
+      sess.aiModel='importé (texte libre)';
+      sess.docHTML=buildAIDocHTML({
+        vue_densemble:paragraphs[0],
+        sections:paragraphs.slice(1,9).map((p,i)=>({titre:'',depuis:null,contenu:p})),
+        notions:[],points_cles:[]
+      },sess);
+      await dbPut('sessions',sess);
+      renderDocBody(sess);
+      show('doc');
+      toast('Texte importé comme synthèse en clair.','ok',3200);
+    }
+  };
+}
 function wire(){
   $('#brand-ico').innerHTML=icon('brand',24);
   $('#brand').addEventListener('click',()=>{if(document.body.dataset.view!=='rec')show('home')});
@@ -2912,6 +2980,26 @@ function wire(){
         const ok=await confirmDialog({title:'Analyse locale ?',body:'Le document sera régénéré par l\u2019analyse statistique locale (extraits, sans rédaction IA). Vos éditions seront perdues.',ok:'Analyser',danger:true});
         if(!ok||!state.current)return;
         await composeAndShow(state.current);
+      }});
+    }
+	    if(s&&s.segments&&s.segments.length){
+      items.push({icon:'ext',label:'Copier le prompt de résumé (Z.ai, ChatGPT…)',fn:async()=>{
+        if(!s)return;
+        let t;
+        if(s.docHTML&&!s._thin){
+          t=transcriptForAI(s.segments);
+        }else{
+          t=AI_SYS+'\n\n'+mainPrompt(s,null);
+        }
+        const ok=await copyText(t);
+        toast(ok?'Prompt copié ('+wordCount(t)+' mots) — collez-le dans l\u2019assistant de votre choix.':'Copie impossible — sélectionnez le texte manuellement.','info',3600);
+      }});
+      items.push({icon:'docic',label:'Copier la transcription seule',fn:async()=>{
+        const ok=await copyText(transcriptForAI(s.segments));
+        toast(ok?'Transcription copiée — '+wordCount(transcriptForAI(s.segments))+' mots.':'Copie impossible.','info',2600);
+      }});
+      items.push({icon:'spark',label:'Importer la réponse IA (coller)',fn:()=>{
+        importAIReply(s);
       }});
     }
     if(state.audioBlob){
