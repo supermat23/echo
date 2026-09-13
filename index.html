@@ -2877,6 +2877,85 @@ setInterval(()=>{const i=$('#rec-title');if(i&&!i.value)i.placeholder=SUGGEST[su
   await refreshHome();
   show('home');
 })();
+/* ==================== CORRECTIF PIPELINE AUDIO (greffe de secours) ====================
+   Définit les fonctions de conversion si elles sont absentes du fichier
+   (perdues lors d'un remplacement) — les affecte à window pour qu'elles
+   soient visibles partout. Le toast au démarrage prouve que CE code
+   s'exécute : s'il n'apparaît pas, le navigateur exécute une vieille
+   version en cache (voir purge). */
+(function(){
+  const seen=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+  const mark=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+  if(typeof encodeWav!=='function'){
+    window.encodeWav=function(f32,sr){
+      const buf=new ArrayBuffer(44+f32.length*2);
+      const v=new DataView(buf);
+      const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+      ws(0,'RIFF');v.setUint32(4,36+f32.length*2,true);ws(8,'WAVE');ws(12,'fmt ');
+      v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+      v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
+      ws(36,'data');v.setUint32(40,f32.length*2,true);
+      let o=44;
+      for(let i=0;i<f32.length;i++,o+=2){const s=Math.max(-1,Math.min(1,f32[i]));v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true)}
+      return new Blob([buf],{type:'audio/wav'});
+    };
+  }
+  if(typeof monoSlice!=='function'){
+    window.monoSlice=function(d,o,end){
+      if(d.chans.length===1)return d.chans[0].subarray(o,end);
+      const out=new Float32Array(end-o),n=d.chans.length;
+      for(let i=o;i<end;i++){let s=0;for(let c=0;c<n;c++)s+=d.chans[c][i];out[i-o]=s/n}
+      return out;
+    };
+  }
+  if(typeof decodeAudio16k!=='function'){
+    window.decodeAudio16k=async function(blob){
+      const ab=await blob.arrayBuffer();
+      const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+      let ctx=null,closeAfter=false;
+      try{ctx=new OAC(1,1,16000)}catch(e){}
+      if(!ctx||!ctx.decodeAudioData){
+        const AC=window.AudioContext||window.webkitAudioContext;
+        ctx=new AC();closeAfter=true;
+      }
+      let decoded;
+      try{
+        decoded=await new Promise((res,rej)=>{
+          let done=false;
+          const ok=b=>{if(!done){done=true;res(b)}};
+          const err=e=>{if(!done){done=true;rej(e||new Error('décodage impossible'))}};
+          try{
+            const p=ctx.decodeAudioData(ab,ok,err);
+            if(p&&p.then)p.then(ok).catch(err);
+          }catch(e){err(e)}
+        });
+      }finally{
+        if(closeAfter){try{ctx.close()}catch(e){}}
+      }
+      const chans=[];
+      for(let c=0;c<decoded.numberOfChannels;c++)chans.push(decoded.getChannelData(c));
+      return {chans,len:decoded.length,rate:decoded.sampleRate||16000};
+    };
+  }
+  if(typeof blobToMono16k!=='function'){
+    window.blobToMono16k=async function(blob){
+      const d=await window.decodeAudio16k(blob);
+      const m=window.monoSlice(d,0,d.len);
+      if(Math.abs((d.rate||16000)-16000)<1)return m;
+      const ratio=d.rate/16000;
+      const out=new Float32Array(Math.floor(m.length/ratio));
+      for(let i=0;i<out.length;i++){
+        const x=i*ratio,j=Math.floor(x);
+        out[i]=j>=m.length-1?m[m.length-1]:m[j]+(m[j+1]-m[j])*(x-j);
+      }
+      return out;
+    };
+  }
+  if(!seen('echo_fixwav_ok')){
+    mark('echo_fixwav_ok','1');
+    setTimeout(()=>{try{toast('Correctif audio actif — build « fix-wav ».','ok',2400)}catch(e){}},900);
+  }
+})();
 </script>
 </body>
 </html>
