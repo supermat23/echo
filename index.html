@@ -1242,17 +1242,14 @@ async function composeAndShow(s){
 const GROQ_URL='https://api.groq.com/openai/v1/audio/transcriptions';
 const GROQ_MODELS='https://api.groq.com/openai/v1/models';
 const MAX_UPLOAD=24*1024*1024;
-/* Types MIME acceptés tels quels par Groq ; tout le reste est converti en WAV */
 const GROQ_MIMES=/^(audio\/(flac|mp3|mp4|mpeg|mpga|m4a|ogg|wav|webm|x-m4a|x-wav))$/i;
 const GROQ_MIME_FOR={mp3:'audio/mp3',m4a:'audio/m4a',mp4:'audio/mp4',ogg:'audio/ogg',wav:'audio/wav',flac:'audio/flac',webm:'audio/webm'};
+
 async function resolveAudioBlob(sess){
   if(state.current&&state.current.id===sess.id&&state.audioBlob)return state.audioBlob;
   const a=await dbGet('audio',sess.id);
   return a&&a.blob||null;
 }
-/* Extension d'envoi : déduite du type MIME, avec repli sur l'extension
-   du fichier importé (les types exotiques ou absents étaient mal étiquetés,
-   ce que Groq refuse). */
 function blobExt(blob,fallback){
   const t=String(blob.type||'').toLowerCase();
   if(/x-m4a|m4a|mp4|aac/.test(t))return 'm4a';
@@ -1268,34 +1265,35 @@ function blobExt(blob,fallback){
   }
   return 'webm';
 }
-/* Décodage mémoire-sobre : directement à 16 kHz (plus d'intermédiaire
-   à 44,1/48 kHz qui atteignait ~1,9 Go pour 1 h 30 — c'est ce qui
-   faisait planter la conversion des fichiers longs). */
+
+/* --- Décodage mémoire-sobre, directement en 16 kHz mono --- */
 async function decodeAudio16k(blob){
   const ab=await blob.arrayBuffer();
   const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
-  let ctx=null;
+  let ctx=null,closeAfter=false;
   try{ctx=new OAC(1,1,16000)}catch(e){}
   if(!ctx||!ctx.decodeAudioData){
     const AC=window.AudioContext||window.webkitAudioContext;
-    ctx=new AC();
+    ctx=new AC();closeAfter=true;
   }
-  const decoded=await new Promise((res,rej)=>{
-    let done=false;
-    const ok=b=>{if(!done){done=true;res(b)}};
-    const err=e=>{if(!done){done=true;rej(e||new Error('décodage impossible'))}};
-    try{
-      const p=ctx.decodeAudioData(ab,ok,err);
-      if(p&&p.then)p.then(ok).catch(err);
-    }catch(e){err(e)}
-  });
-  try{if(ctx.close&&!(ctx instanceof (window.OfflineAudioContext||window.webkitOfflineAudioContext||Object)))ctx.close()}catch(e){}
+  let decoded;
+  try{
+    decoded=await new Promise((res,rej)=>{
+      let done=false;
+      const ok=b=>{if(!done){done=true;res(b)}};
+      const err=e=>{if(!done){done=true;rej(e||new Error('décodage impossible'))}};
+      try{
+        const p=ctx.decodeAudioData(ab,ok,err);
+        if(p&&p.then)p.then(ok).catch(err);
+      }catch(e){err(e)}
+    });
+  }finally{
+    if(closeAfter){try{ctx.close()}catch(e){}}
+  }
   const chans=[];
   for(let c=0;c<decoded.numberOfChannels;c++)chans.push(decoded.getChannelData(c));
   return {chans,len:decoded.length,rate:decoded.sampleRate||16000};
 }
-/* Tranche mono : simple vue (aucune copie) si la source est mono,
-   mixage des canaux uniquement sur la tranche demandée sinon. */
 function monoSlice(d,o,end){
   if(d.chans.length===1)return d.chans[0].subarray(o,end);
   const out=new Float32Array(end-o),n=d.chans.length;
@@ -1306,7 +1304,6 @@ async function blobToMono16k(blob){
   const d=await decodeAudio16k(blob);
   const m=monoSlice(d,0,d.len);
   if(Math.abs((d.rate||16000)-16000)<1)return m;
-  /* repli rarissime (navigateur qui ignore la fréquence demandée) : rééchantillonnage linéaire */
   const ratio=d.rate/16000;
   const out=new Float32Array(Math.floor(m.length/ratio));
   for(let i=0;i<out.length;i++){
@@ -1315,11 +1312,25 @@ async function blobToMono16k(blob){
   }
   return out;
 }
+/* encodeWav — DOIT exister au premier niveau du script. C'est cette fonction
+   qui manquait (« encodeWav is not defined ») après un copier-coller
+   ayant dépassé la fonction précédente. */
+function encodeWav(f32,sr){
+  const buf=new ArrayBuffer(44+f32.length*2);
+  const v=new DataView(buf);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  ws(0,'RIFF');v.setUint32(4,36+f32.length*2,true);ws(8,'WAVE');ws(12,'fmt ');
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
+  ws(36,'data');v.setUint32(40,f32.length*2,true);
+  let o=44;
+  for(let i=0;i<f32.length;i++,o+=2){const s=Math.max(-1,Math.min(1,f32[i]));v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true)}
+  return new Blob([buf],{type:'audio/wav'});
+}
+
 async function groqPostPart(part,key,sess,signal,onPhase){
   for(let attempt=0;;attempt++){
     const fd=new FormData();
-    /* Nom et type MIME envoyés de façon cohérente : c'est ce qui manquait
-       aux fichiers importés (conteneur mal étiqueté → refus Groq). */
     const fname='audio.'+part.ext;
     const ftype=GROQ_MIME_FOR[part.ext]||String(part.blob.type||'').split(';')[0]||'audio/webm';
     try{fd.append('file',new File([part.blob],fname,{type:ftype}))}
@@ -1366,6 +1377,7 @@ async function testGroqKey(key){
   if(r.status===401||r.status===403)return {ok:false,reason:'Clé refusée — vérifiez qu\u2019elle est complète et active.'};
   return {ok:false,reason:'Serveur inaccessible (erreur '+r.status+').'};
 }
+
 async function runApiTranscription(sess){
   const key=CFG.key;
   if(!key){toast('Configurez d\u2019abord votre clé Groq dans les réglages.','warn');state.pending=sess;openSettings();return false}
@@ -1385,25 +1397,22 @@ async function runApiTranscription(sess){
       <button class="btn-skipc ai-cancel" id="api-cancel">Annuler</button>
     </div>`;
   const ctl=new AbortController();
-  grabWakeLock();
   $('#api-cancel').onclick=()=>ctl.abort();
   let timer=null;
+  grabWakeLock();
   try{
-    /* Format nativement accepté → envoi direct ; sinon conversion en WAV
-       (découpage automatique si le fichier dépasse la limite d'envoi). */
-        let decoded=null,rate=16000,chunkSamples=0,totalParts=1;
+    let decoded=null,rate=16000,chunkSamples=0,totalParts=1;
     const mime=String(blob.type||'').split(';')[0].trim().toLowerCase();
-    if(blob.size<=MAX_UPLOAD&&GROQ_MIMES.test(mime)){
-      /* format directement accepté et peu volumineux : envoi tel quel */
-    }else{
+    const direct=blob.size<=MAX_UPLOAD&&GROQ_MIMES.test(mime);
+    if(!direct){
       $('#api-phase').textContent='Décodage de l\u2019audio';
-      $('#api-detail').textContent='Fichier volumineux ou format à convertir — décodage en 16 kHz, étape la plus longue (quelques minutes pour 1 h 30). Gardez l\u2019application ouverte…';
+      $('#api-detail').textContent='Fichier volumineux ou format à convertir — décodage en 16 kHz (le plus long : quelques minutes pour 1 h 30). Gardez l\u2019écran allumé…';
       try{decoded=await decodeAudio16k(blob)}
       catch(e){
-        throw new Error('décodage impossible — fichier illisible par ce navigateur ou mémoire insuffisante pour cette durée. Essayez de l\u2019exporter en MP3, ou de le découper en morceaux d\u2019une heure.');
+        throw new Error('décodage impossible — fichier illisible par ce navigateur, ou mémoire insuffisante pour cette durée (fichier stéréo très long ?). Essayez un export en MP3 mono, ou découpez-le en morceaux d\u2019une heure.');
       }
       rate=decoded.rate||16000;
-      chunkSamples=Math.floor(20*1024*1024/2); /* ~20 Mo de WAV mono par envoi */
+      chunkSamples=Math.floor(20*1024*1024/2);
       totalParts=Math.max(1,Math.ceil(decoded.len/chunkSamples));
     }
     const t0=performance.now();
@@ -1431,23 +1440,23 @@ async function runApiTranscription(sess){
       segs.push(...rs);
       $('#api-phase').textContent=base+'Transcription';
     }
-    decoded=null; /* libère la mémoire avant la suite */
+    decoded=null;
     clearInterval(timer);timer=null;
     if(!segs.length)throw new Error('aucune parole détectée dans l\u2019enregistrement');
     sess.segments=segs;
     await dbPut('sessions',sess);
     composerHide();
-    toast(`Transcription terminée — ${wordCount(segs.map(s=>s.text).join(' '))} mots.`,'ok',3200);
     releaseWakeLock();
-	return true;
+    toast(`Transcription terminée — ${wordCount(segs.map(s=>s.text).join(' '))} mots.`,'ok',3200);
+    return true;
   }catch(e){
     if(timer)clearInterval(timer);
     composerHide();
+    releaseWakeLock();
     if(e&&e.name==='AbortError'){toast('Transcription annulée.','info');return false}
     const msg=e&&e.message?e.message:'erreur inconnue';
-    toast('Transcription impossible : '+msg,'warn',5200);
-    releaseWakeLock();
-	return false;
+    toast('Transcription impossible : '+msg,'warn',5600);
+    return false;
   }
 }
 
