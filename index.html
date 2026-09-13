@@ -2983,16 +2983,11 @@ function wire(){
       }});
     }
 	    if(s&&s.segments&&s.segments.length){
-      items.push({icon:'ext',label:'Copier le prompt de résumé (Z.ai, ChatGPT…)',fn:async()=>{
+            items.push({icon:'ext',label:'Copier le prompt de résumé (Z.ai, ChatGPT…)',fn:async()=>{
         if(!s)return;
-        let t;
-        if(s.docHTML&&!s._thin){
-          t=transcriptForAI(s.segments);
-        }else{
-          t=AI_SYS+'\n\n'+mainPrompt(s,null);
-        }
+        const t=AI_SYS+'\n\n'+mainPrompt(s,null);
         const ok=await copyText(t);
-        toast(ok?'Prompt copié ('+wordCount(t)+' mots) — collez-le dans l\u2019assistant de votre choix.':'Copie impossible — sélectionnez le texte manuellement.','info',3600);
+        toast(ok?'Prompt complet copié ('+wordCount(t)+' mots) — collez-le dans l\u2019assistant de votre choix.':'Copie impossible — sélectionnez le texte manuellement.','info',3600);
       }});
       items.push({icon:'docic',label:'Copier la transcription seule',fn:async()=>{
         const ok=await copyText(transcriptForAI(s.segments));
