@@ -1006,14 +1006,14 @@ Réponds uniquement avec ce JSON :
 {"vue_densemble":"...","sections":[{"titre":"...","depuis":"mm:ss","contenu":"..."}],"notions":[{"terme":"...","definition":"...","depuis":"mm:ss"}],"points_cles":["..."]${isM?',"decisions":["..."],"actions":[{"quoi":"...","quand":""}]':''}}`;
 }
 async function aiChat(messages,opts={}){
-  let {maxTokens=8000,json=true,signal}=opts;
+  let {maxTokens=3000,json=true,signal}=opts;
   const p=AI_PROVIDERS[AI.provider];
   const key=AI.key;
   if(!key)throw new Error('aucune clé IA configurée — réglages ⚙');
   let model=AI.model;
   const tried=new Set([model]);
   let lastErr=null;
-  for(let round=0;round<4;round++){
+  for(let round=0;round<6;round++){
     const doSend=(mt,withJson)=>{
       const body={model:mt,messages,temperature:autoTemp(mt),max_tokens:maxTokens};
       if(withJson)body.response_format={type:'json_object'};
@@ -1038,33 +1038,34 @@ async function aiChat(messages,opts={}){
       return c;
     }
     let err='erreur '+res.status;
-    try{
-      const j=await res.json();
-      const em=j&&(j.error&&(j.error.message||j.error.code))||j.message;
-      if(em)err=String(em);
-    }catch(e){}
+    try{const j=await res.json();const em=j&&(j.error&&(j.error.message||j.error.code))||j.message;if(em)err=String(em)}catch(e){}
     lastErr=new Error(err);
     if(res.status===401||res.status===403)
       throw new Error('clé refusée ('+res.status+') — vérifiez la clé '+p.label);
-    if(res.status===429)
-      throw new Error('limite de débit atteinte — réessayez dans un instant');
+    if(res.status===429){
+      const mLim=/limit\s*[: ]\s*(\d+)/i.exec(err);
+      const mReq=/requested\s+(\d+)/i.exec(err);
+      if(mLim&&mReq&&+mReq[1]>+mLim[1]){
+        const e=new Error(err);e.tpmTooLarge=true;throw e;
+      }
+      if(round<3){
+        const ra=+(res.headers.get('retry-after')||'');
+        const ms=isNaN(ra)?60000:Math.min(Math.max(ra,10),90)*1000;
+        if(opts.onWait)try{opts.onWait(ms)}catch(e2){}
+        await wait(ms);
+        continue;
+      }
+      throw new Error('quota Groq saturé — patientez une minute et relancez');
+    }
     if(/exist|not found|not_found|no access|unavailable|decommission|deprecated|unsupported|does not have/i.test(err)){
       try{
         const list=await fetchChatModels();
         const alt=list.find(m=>!tried.has(m));
-        if(alt){
-          tried.add(alt);
-          toast('Modèle « '+model+' » indisponible — bascule sur « '+alt+' ».','info',4200);
-          model=alt;AI.model=alt;
-          const inp=$('#ai-model-input');if(inp)inp.value=alt;
-          continue;
-        }
+        if(alt){tried.add(alt);toast('Modèle « '+model+' » indisponible — bascule sur « '+alt+' ».','info',4200);model=alt;AI.model=alt;const inp=$('#ai-model-input');if(inp)inp.value=alt;continue}
       }catch(e2){}
       throw lastErr;
     }
-    if(res.status===400&&/token/i.test(err)&&maxTokens>2500){
-      maxTokens=3000;continue;
-    }
+    if(res.status===400&&/token/i.test(err)&&maxTokens>1500){maxTokens=1500;continue}
     throw lastErr;
   }
   throw lastErr||new Error('échec inconnu');
@@ -1136,13 +1137,13 @@ async function runAIDraft(sess){
     toast('Configurez une clé IA dans les réglages — votre clé Groq suffit.','warn',3400);
     state.pending=sess;openSettings();return false;
   }
-  if(!sess.segments||!sess.segments.length){toast('Transcrivez d\u2019abord l\u2019enregistrement — bouton sur le document ou menu ⋯.','warn');return false}
+  if(!sess.segments||!sess.segments.length){toast('Transcrivez d\u2019abord l\u2019enregistrement.','warn');return false}
   composerShow();
   $('#composer-title').textContent='Rédaction IA du résumé';
   $('#composer-sub').textContent=sess.title;
   $('#ring-fg').style.strokeDashoffset=326.7;
   $('#ring-core').innerHTML=`<span class="spin">${icon('spark',30)}</span>`;
-  $('#composer-note').textContent='La transcription est envoyée au modèle le temps de la rédaction, puis le résumé revient sur votre appareil.';
+  $('#composer-note').textContent='Le tier gratuit limite les jetons par minute : des pauses entre les lots sont normales.';
   $('#composer-body').innerHTML=`
     <div class="ai-stat">
       <p class="ai-phase" id="aiw-phase">Préparation</p>
@@ -1159,24 +1160,56 @@ async function runAIDraft(sess){
     const words=wordCount(sess.segments.map(x=>x.text).join(' '));
     phase('Préparation',words+' mots · '+AI.model);
     let digest=null;
-    if(words>9000){
-      const chunks=chunkSegments(sess.segments,8000);
+    if(words>1700){
+      let chunkWords=1400;
+      let idx=0,lots=0;
+      const SEGS=sess.segments;
       digest='';
-      for(let i=0;i<chunks.length;i++){
+      while(idx<SEGS.length){
         if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
-        phase('Analyse — partie '+(i+1)+'/'+chunks.length,'Synthèse intermédiaire du passage…');
-        const r=extractJSON(await aiChat([
-          {role:'system',content:AI_SYS},
-          {role:'user',content:chunkPrompt(i,chunks.length,transcriptForAI(chunks[i]))}
-        ],{maxTokens:4000,signal:ctl.signal}));
-        digest+=`Partie ${i+1}/${chunks.length}\nRésumé : ${r.resume||''}\nPoints : ${(r.points||[]).join(' | ')}\nNotions : ${(r.notions||[]).map(n=>`${n.terme||''} — ${n.definition||''} (${n.depuis||''})`).join(' ; ')}\n\n`;
+        const start=idx;let w=0;
+        while(idx<SEGS.length&&w<chunkWords){
+          const c=wordCount(SEGS[idx].text);
+          if(w>0&&w+c>chunkWords)break;
+          w+=c;idx++;
+        }
+        if(idx===start){w=wordCount(SEGS[idx].text);idx++}
+        const cs=SEGS.slice(start,idx);
+        lots++;
+        phase('Analyse — lot '+lots,'Condensé du passage ('+w+' mots)…');
+        let r;
+        try{
+          r=extractJSON(await aiChat([
+            {role:'system',content:AI_SYS},
+            {role:'user',content:chunkPrompt(lots-1,Math.max(2,Math.ceil(words/chunkWords)),transcriptForAI(cs))}
+          ],{maxTokens:1200,signal:ctl.signal,onWait:ms=>{phase('Pause quota Groq','Reprise dans '+Math.round(ms/1000)+' s — limite de jetons par minute.')}}));
+        }catch(e){
+          if(e&&e.tpmTooLarge&&chunkWords>700){
+            chunkWords=Math.max(700,Math.floor(chunkWords/2));
+            idx=start;
+            toast('Lot trop volumineux pour le quota — réduction à '+chunkWords+' mots par lot.','info',3200);
+            continue;
+          }
+          throw e;
+        }
+        digest+='Lot '+lots+'\nRésumé : '+(r.resume||'')+'\nPoints : '+(r.points||[]).slice(0,6).join(' | ')+'\nNotions : '+(r.notions||[]).map(n=>(n.terme||'')+' — '+(n.definition||'')+' ('+(n.depuis||'')+')').join(' ; ')+'\n\n';
+        if(idx<SEGS.length){
+          phase('Régulation du quota','Pause de 35 s entre les lots (jetons par minute)…');
+          await wait(35000);
+          if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
+        }
+      }
+      if(digest){
+        phase('Régulation du quota','Pause avant la rédaction finale…');
+        await wait(35000);
+        if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
       }
     }
-    phase('Rédaction du résumé','Le modèle structure et reformule le document…');
+    phase('Rédaction du résumé',digest?'Assemblage des lots et rédaction finale…':'Le modèle structure et reformule le document…');
     const out=await aiChat([
       {role:'system',content:AI_SYS},
       {role:'user',content:mainPrompt(sess,digest)}
-    ],{maxTokens:8000,signal:ctl.signal});
+    ],{maxTokens:3000,signal:ctl.signal,onWait:ms=>{phase('Pause quota Groq','Reprise dans '+Math.round(ms/1000)+' s…')}});
     const D=extractJSON(out);
     if(!D||(!D.vue_densemble&&!(D.sections||[]).length&&!(D.points_cles||[]).length))
       throw new Error('réponse du modèle inexploitable');
@@ -1194,7 +1227,11 @@ async function runAIDraft(sess){
     clearInterval(tm);
     composerHide();
     if(e&&e.name==='AbortError'){toast('Rédaction interrompue — l\u2019analyse locale reste disponible (menu ⋯).','info');return false}
-    toast('Rédaction IA impossible : '+(e&&e.message?e.message:'erreur inconnue'),'warn',5200);
+    if(e&&e.tpmTooLarge){
+      toast('Le résumé dépasse le quota de jetons du modèle '+AI.model+' — choisissez un autre modèle de rédaction (réglages ⚙, « Charger les modèles disponibles ») ou réessayez dans quelques minutes.','warn',7000);
+    }else{
+      toast('Rédaction IA impossible : '+(e&&e.message?e.message:'erreur inconnue'),'warn',5200);
+    }
     return false;
   }
 }
@@ -1265,8 +1302,6 @@ function blobExt(blob,fallback){
   }
   return 'webm';
 }
-
-/* --- Décodage mémoire-sobre, directement en 16 kHz mono --- */
 async function decodeAudio16k(blob){
   const ab=await blob.arrayBuffer();
   const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
@@ -1282,14 +1317,10 @@ async function decodeAudio16k(blob){
       let done=false;
       const ok=b=>{if(!done){done=true;res(b)}};
       const err=e=>{if(!done){done=true;rej(e||new Error('décodage impossible'))}};
-      try{
-        const p=ctx.decodeAudioData(ab,ok,err);
-        if(p&&p.then)p.then(ok).catch(err);
-      }catch(e){err(e)}
+      try{const p=ctx.decodeAudioData(ab,ok,err);if(p&&p.then)p.then(ok).catch(err)}
+      catch(e){err(e)}
     });
-  }finally{
-    if(closeAfter){try{ctx.close()}catch(e){}}
-  }
+  }finally{if(closeAfter){try{ctx.close()}catch(e){}}}
   const chans=[];
   for(let c=0;c<decoded.numberOfChannels;c++)chans.push(decoded.getChannelData(c));
   return {chans,len:decoded.length,rate:decoded.sampleRate||16000};
@@ -1312,9 +1343,6 @@ async function blobToMono16k(blob){
   }
   return out;
 }
-/* encodeWav — DOIT exister au premier niveau du script. C'est cette fonction
-   qui manquait (« encodeWav is not defined ») après un copier-coller
-   ayant dépassé la fonction précédente. */
 function encodeWav(f32,sr){
   const buf=new ArrayBuffer(44+f32.length*2);
   const v=new DataView(buf);
@@ -1327,7 +1355,21 @@ function encodeWav(f32,sr){
   for(let i=0;i<f32.length;i++,o+=2){const s=Math.max(-1,Math.min(1,f32[i]));v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true)}
   return new Blob([buf],{type:'audio/wav'});
 }
-
+/* MP3 volumineux : décodage tranche par tranche — seule une tranche
+   (~30 Mo) réside en mémoire au lieu du fichier entier (crash Android). */
+async function mp3SliceParts(blob,onPart){
+  const SLICE=4*1024*1024;
+  const parts=[];let off=0,acc=0;
+  while(off<blob.size){
+    const end=Math.min(off+SLICE,blob.size);
+    const d=await decodeAudio16k(blob.slice(off,end));
+    const rate=d.rate||16000;
+    parts.push({blob:encodeWav(monoSlice(d,0,d.len),rate),ext:'wav',offsetMs:Math.round(acc/rate*1000)});
+    acc+=d.len;off=end;
+    if(onPart)onPart(parts.length);
+  }
+  return parts;
+}
 async function groqPostPart(part,key,sess,signal,onPhase,model){
   for(let attempt=0;;attempt++){
     const fd=new FormData();
@@ -1365,8 +1407,7 @@ async function groqPostPart(part,key,sess,signal,onPhase,model){
       }
       let msg='limite de débit Groq atteinte';
       try{const j=await res.json();if(j&&j.error&&j.error.message)msg=j.error.message}catch(e){}
-      const err=new Error(msg);
-      err.rateLimited=true;
+      const err=new Error(msg);err.rateLimited=true;
       err.retryInMs=isNaN(ra)?600000:ra*1000;
       throw err;
     }
@@ -1379,7 +1420,12 @@ async function groqPostPart(part,key,sess,signal,onPhase,model){
     throw new Error(msg);
   }
 }
-
+async function testGroqKey(key){
+  const r=await fetch(GROQ_MODELS,{headers:{Authorization:'Bearer '+key}});
+  if(r.ok)return {ok:true};
+  if(r.status===401||r.status===403)return {ok:false,reason:'Clé refusée — vérifiez qu\u2019elle est complète et active.'};
+  return {ok:false,reason:'Serveur inaccessible (erreur '+r.status+').'};
+}
 async function runApiTranscription(sess){
   const key=CFG.key;
   if(!key){toast('Configurez d\u2019abord votre clé Groq dans les réglages.','warn');state.pending=sess;openSettings();return false}
@@ -1390,7 +1436,7 @@ async function runApiTranscription(sess){
   $('#composer-sub').textContent=sess.title;
   $('#ring-fg').style.strokeDashoffset=326.7;
   $('#ring-core').innerHTML=`<span class="spin">${icon('refresh',30)}</span>`;
-  $('#composer-note').textContent='L\u2019audio est envoyé à Groq par parties ; la progression est sauvegardée après chacune.';
+  $('#composer-note').textContent='L\u2019audio est envoyé à Groq par parties ; la progression est sauvegardée après chaque partie.';
   $('#composer-body').innerHTML=`
     <div class="ai-stat">
       <p class="ai-phase" id="api-phase">Préparation</p>
@@ -1403,28 +1449,40 @@ async function runApiTranscription(sess){
   let timer=null;
   grabWakeLock();
   try{
-    let decoded=null,rate=16000,chunkSamples=0,totalParts=1;
     const mime=String(blob.type||'').split(';')[0].trim().toLowerCase();
     const direct=blob.size<=MAX_UPLOAD&&GROQ_MIMES.test(mime);
-    /* --- Reprise d'une transcription interrompue --- */
-    let startPart=0,priorSegs=[];
+    let parts=null,decoded=null,rate=16000,chunkSamples=0,totalParts=1;
+    let startPart=0;const priorSegs=[];
     const pr=sess.trProgress;
     if(pr&&pr.segs&&pr.segs.length&&pr.totalParts>1&&!direct){
-      const go=await confirmDialog({title:'Reprendre la transcription ?',body:pr.doneParts+' / '+pr.totalParts+' parties ont déjà été transmises. Reprendre à la partie '+(pr.doneParts+1)+', ou recommencer depuis le début ?',ok:'Reprendre',cancel:'Recommencer'});
-      if(go){startPart=pr.doneParts;priorSegs=pr.segs;chunkSamples=pr.chunkSamples;totalParts=pr.totalParts}
-      else{delete sess.trProgress}
-    }else if(pr){delete sess.trProgress}
+      const go=await confirmDialog({title:'Reprendre la transcription ?',body:pr.doneParts+' / '+pr.totalParts+' parties déjà transmises. Reprendre à la partie '+(pr.doneParts+1)+' ?',ok:'Reprendre',cancel:'Recommencer'});
+      if(go){startPart=Math.min(pr.doneParts,pr.totalParts-1);priorSegs.push(...pr.segs)}
+      else delete sess.trProgress;
+    }else if(pr)delete sess.trProgress;
     if(!direct){
-      $('#api-phase').textContent='Décodage de l\u2019audio';
-      $('#api-detail').textContent=startPart>0
-        ?('Reprise : re-décodage de l\u2019audio avant la partie '+(startPart+1)+'/'+totalParts+'…')
-        :'Fichier volumineux ou format à convertir — décodage en 16 kHz (le plus long : quelques minutes pour 1 h 30). Gardez l\u2019écran allumé…';
-      try{decoded=await decodeAudio16k(blob)}
-      catch(e){
-        throw new Error('décodage impossible — fichier illisible par ce navigateur, ou mémoire insuffisante pour cette durée. Essayez un export en MP3 mono, ou découpez-le en morceaux d\u2019une heure.');
+      const ext=String(sess.audioExt||'').toLowerCase();
+      const isMp3=/mpeg|mp3/.test(mime)||ext==='mp3';
+      const durSec=(sess.durationMs||0)/1000;
+      const dm=(navigator.deviceMemory||4);
+      const limitMB=dm>=8?800:dm>=6?450:dm>=4?280:150;
+      const kbps=durSec>0?blob.size*8/durSec/1000:0;
+      const chMul=(kbps>0&&kbps<96)?1:2;
+      const estMB=durSec*16000*4*chMul/1048576;
+      if(estMB>limitMB&&isMp3){
+        $('#api-phase').textContent='Découpage du MP3';
+        $('#api-detail').textContent='Décodage tranche par tranche (mémoire réduite)…';
+        parts=await mp3SliceParts(blob,n=>{$('#api-detail').textContent='Tranche '+n+' décodée…'});
+        totalParts=parts.length;
+      }else if(estMB>limitMB){
+        const go=await confirmDialog({title:'Fichier lourd pour cet appareil',body:'La conversion demande ~'+Math.round(estMB)+' Mo de mémoire : un plantage de la page est probable ici. Convertissez le fichier en MP3 (l\u2019application le découpera alors automatiquement), ou transcrivez-le depuis un ordinateur. Tenter quand même ?',ok:'Tenter quand même',cancel:'Annuler'});
+        if(!go)throw new Error('conversion annulée — convertissez le fichier en MP3 ou utilisez un ordinateur');
       }
-      rate=decoded.rate||16000;
-      if(!chunkSamples){
+      if(!parts){
+        $('#api-phase').textContent='Décodage de l\u2019audio';
+        $('#api-detail').textContent=(startPart>0?'Reprise — re-décodage avant la partie '+(startPart+1):'Décodage en 16 kHz (le plus long : quelques minutes pour 1 h 30). Gardez l\u2019écran allumé')+'…';
+        try{decoded=await decodeAudio16k(blob)}
+        catch(e){throw new Error('décodage impossible — fichier illisible ou mémoire insuffisante. Essayez un export en MP3 mono, ou découpez le fichier.')}
+        rate=decoded.rate||16000;
         chunkSamples=Math.floor(20*1024*1024/2);
         totalParts=Math.max(1,Math.ceil(decoded.len/chunkSamples));
       }
@@ -1434,72 +1492,55 @@ async function runApiTranscription(sess){
     const segs=[...priorSegs];
     let curModel=CFG.model;
     const triedModels=new Set([curModel]);
-    let i=startPart;
-    while(i<totalParts){
+    for(let i=startPart;i<totalParts;i++){
       if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
-      const base=totalParts>1?`Partie ${i+1}/${totalParts} — `:'';
+      const base=totalParts>1?('Partie '+(i+1)+'/'+totalParts+' — '):'';
       let part;
-      if(decoded){
+      if(parts){part=parts[i]}
+      else if(decoded){
         const o=i*chunkSamples,end=Math.min(o+chunkSamples,decoded.len);
         $('#api-phase').textContent=base+'Préparation de l\u2019extrait';
         $('#api-detail').textContent='Conversion de l\u2019extrait en WAV mono…';
         part={blob:encodeWav(monoSlice(decoded,o,end),rate),ext:'wav',offsetMs:Math.round(o/rate*1000)};
-      }else{
-        part={blob,ext:blobExt(blob,sess.audioExt),offsetMs:0};
-      }
+      }else{part={blob,ext:blobExt(blob,sess.audioExt),offsetMs:0}}
       $('#api-phase').textContent=base+'Envoi de l\u2019audio';
       $('#api-detail').textContent='Whisper '+(curModel.includes('turbo')?'turbo':'large-v3')+' · '+(part.blob.size/1048576).toFixed(1)+' Mo';
       let rs;
       try{
         rs=await groqPostPart(part,key,sess,ctl.signal,(label,detail)=>{
-          const p=$('#api-phase'),d=$('#api-detail');
-          if(p)p.textContent=label;
-          if(d)d.textContent=detail;
+          const p=$('#api-phase'),d=$('#api-detail');if(p)p.textContent=label;if(d)d.textContent=detail;
         },curModel);
       }catch(e){
         if(e&&e.rateLimited){
-          /* quota du modèle épuisé → bascule sur l'autre modèle (quota distinct) */
           const alt=curModel.includes('turbo')?'whisper-large-v3':'whisper-large-v3-turbo';
           if(!triedModels.has(alt)){
             triedModels.add(alt);
-            toast('Quota « '+curModel+' » atteint — bascule sur « '+alt+' » (quota séparé).','info',3600);
-            curModel=alt;
-            continue; /* rejoue la même partie */
+            toast('Quota « '+curModel+' » atteint — bascule sur « '+alt+' ».','info',3600);
+            curModel=alt;i--;continue;
           }
-          /* déjà en repli : progression sauvegardée, arrêt propre */
-          if(segs.length&&totalParts>1){
-            sess.trProgress={doneParts:i,totalParts,chunkSamples,segs};
-            await dbPut('sessions',sess);
-          }
+          if(segs.length&&totalParts>1){sess.trProgress={doneParts:i,totalParts,segs};await dbPut('sessions',sess)}
           const mins=Math.max(1,Math.round((e.retryInMs||600000)/60000));
-          throw new Error('quota horaire Groq atteint. '+(segs.length?'La progression ('+i+'/'+totalParts+' parties) est sauvegardée — relancez « Transcrire » dans environ '+mins+' min : la reprise repartira de la partie '+(i+1)+'.':'Réessayez dans environ '+mins+' min.'));
+          throw new Error('quota horaire Groq atteint. '+(segs.length?('Progression sauvegardée ('+i+'/'+totalParts+') — relancez dans ~'+mins+' min, la reprise repartira de la partie '+(i+1)+'.'):'Réessayez dans ~'+mins+' min.'));
         }
         throw e;
       }
       segs.push(...rs);
-      if(totalParts>1){
-        sess.trProgress={doneParts:i+1,totalParts,chunkSamples,segs};
-        await dbPut('sessions',sess);
-      }
-      i++;
+      if(totalParts>1){sess.trProgress={doneParts:i+1,totalParts,segs};await dbPut('sessions',sess)}
     }
-    decoded=null;
+    decoded=null;parts=null;
     clearInterval(timer);timer=null;
     if(!segs.length)throw new Error('aucune parole détectée dans l\u2019enregistrement');
     delete sess.trProgress;
     sess.segments=segs;
     await dbPut('sessions',sess);
-    composerHide();
-    releaseWakeLock();
-    toast(`Transcription terminée — ${wordCount(segs.map(s=>s.text).join(' '))} mots.`,'ok',3200);
+    composerHide();releaseWakeLock();
+    toast('Transcription terminée — '+wordCount(segs.map(s=>s.text).join(' '))+' mots.','ok',3200);
     return true;
   }catch(e){
     if(timer)clearInterval(timer);
-    composerHide();
-    releaseWakeLock();
+    composerHide();releaseWakeLock();
     if(e&&e.name==='AbortError'){toast('Transcription annulée.','info');return false}
-    const msg=e&&e.message?e.message:'erreur inconnue';
-    toast('Transcription : '+msg,'warn',8000);
+    toast('Transcription : '+(e&&e.message?e.message:'erreur inconnue'),'warn',8000);
     return false;
   }
 }
