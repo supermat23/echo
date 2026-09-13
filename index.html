@@ -1328,14 +1328,14 @@ function encodeWav(f32,sr){
   return new Blob([buf],{type:'audio/wav'});
 }
 
-async function groqPostPart(part,key,sess,signal,onPhase){
+async function groqPostPart(part,key,sess,signal,onPhase,model){
   for(let attempt=0;;attempt++){
     const fd=new FormData();
     const fname='audio.'+part.ext;
     const ftype=GROQ_MIME_FOR[part.ext]||String(part.blob.type||'').split(';')[0]||'audio/webm';
     try{fd.append('file',new File([part.blob],fname,{type:ftype}))}
     catch(e){fd.append('file',part.blob,fname)}
-    fd.append('model',CFG.model);
+    fd.append('model',model||CFG.model);
     fd.append('response_format','verbose_json');
     if(CFG.lang!=='auto')fd.append('language',CFG.lang);
     fd.append('temperature','0');
@@ -1356,11 +1356,19 @@ async function groqPostPart(part,key,sess,signal,onPhase){
     }
     if(res.status===401||res.status===403)
       throw new Error('clé refusée ('+res.status+') — vérifiez la clé dans les réglages');
-    if(res.status===429&&attempt<3){
-      const ra=+(res.headers.get('retry-after')||20);
-      const ms=(isNaN(ra)?20:Math.min(ra,60))*1000;
-      if(onPhase)onPhase('Limite de débit','Nouvelle tentative dans '+Math.round(ms/1000)+' s…');
-      await wait(ms);continue;
+    if(res.status===429){
+      const ra=+(res.headers.get('retry-after')||'');
+      const waitMs=isNaN(ra)?20000:Math.min(Math.max(ra,10),60)*1000;
+      if(attempt<3){
+        if(onPhase)onPhase('Quota Groq sollicité','Nouvelle tentative dans '+Math.round(waitMs/1000)+' s…');
+        await wait(waitMs);continue;
+      }
+      let msg='limite de débit Groq atteinte';
+      try{const j=await res.json();if(j&&j.error&&j.error.message)msg=j.error.message}catch(e){}
+      const err=new Error(msg);
+      err.rateLimited=true;
+      err.retryInMs=isNaN(ra)?600000:ra*1000;
+      throw err;
     }
     if(res.status>=500&&attempt<2){
       if(onPhase)onPhase('Serveur occupé','Nouvelle tentative…');
@@ -1370,12 +1378,6 @@ async function groqPostPart(part,key,sess,signal,onPhase){
     try{const j=await res.json();if(j&&j.error&&j.error.message)msg=j.error.message}catch(e){}
     throw new Error(msg);
   }
-}
-async function testGroqKey(key){
-  const r=await fetch(GROQ_MODELS,{headers:{Authorization:'Bearer '+key}});
-  if(r.ok)return {ok:true};
-  if(r.status===401||r.status===403)return {ok:false,reason:'Clé refusée — vérifiez qu\u2019elle est complète et active.'};
-  return {ok:false,reason:'Serveur inaccessible (erreur '+r.status+').'};
 }
 
 async function runApiTranscription(sess){
@@ -1388,7 +1390,7 @@ async function runApiTranscription(sess){
   $('#composer-sub').textContent=sess.title;
   $('#ring-fg').style.strokeDashoffset=326.7;
   $('#ring-core').innerHTML=`<span class="spin">${icon('refresh',30)}</span>`;
-  $('#composer-note').textContent='L\u2019audio est envoyé à Groq le temps de la transcription, puis supprimé de leurs serveurs.';
+  $('#composer-note').textContent='L\u2019audio est envoyé à Groq par parties ; la progression est sauvegardée après chacune.';
   $('#composer-body').innerHTML=`
     <div class="ai-stat">
       <p class="ai-phase" id="api-phase">Préparation</p>
@@ -1404,45 +1406,87 @@ async function runApiTranscription(sess){
     let decoded=null,rate=16000,chunkSamples=0,totalParts=1;
     const mime=String(blob.type||'').split(';')[0].trim().toLowerCase();
     const direct=blob.size<=MAX_UPLOAD&&GROQ_MIMES.test(mime);
+    /* --- Reprise d'une transcription interrompue --- */
+    let startPart=0,priorSegs=[];
+    const pr=sess.trProgress;
+    if(pr&&pr.segs&&pr.segs.length&&pr.totalParts>1&&!direct){
+      const go=await confirmDialog({title:'Reprendre la transcription ?',body:pr.doneParts+' / '+pr.totalParts+' parties ont déjà été transmises. Reprendre à la partie '+(pr.doneParts+1)+', ou recommencer depuis le début ?',ok:'Reprendre',cancel:'Recommencer'});
+      if(go){startPart=pr.doneParts;priorSegs=pr.segs;chunkSamples=pr.chunkSamples;totalParts=pr.totalParts}
+      else{delete sess.trProgress}
+    }else if(pr){delete sess.trProgress}
     if(!direct){
       $('#api-phase').textContent='Décodage de l\u2019audio';
-      $('#api-detail').textContent='Fichier volumineux ou format à convertir — décodage en 16 kHz (le plus long : quelques minutes pour 1 h 30). Gardez l\u2019écran allumé…';
+      $('#api-detail').textContent=startPart>0
+        ?('Reprise : re-décodage de l\u2019audio avant la partie '+(startPart+1)+'/'+totalParts+'…')
+        :'Fichier volumineux ou format à convertir — décodage en 16 kHz (le plus long : quelques minutes pour 1 h 30). Gardez l\u2019écran allumé…';
       try{decoded=await decodeAudio16k(blob)}
       catch(e){
-        throw new Error('décodage impossible — fichier illisible par ce navigateur, ou mémoire insuffisante pour cette durée (fichier stéréo très long ?). Essayez un export en MP3 mono, ou découpez-le en morceaux d\u2019une heure.');
+        throw new Error('décodage impossible — fichier illisible par ce navigateur, ou mémoire insuffisante pour cette durée. Essayez un export en MP3 mono, ou découpez-le en morceaux d\u2019une heure.');
       }
       rate=decoded.rate||16000;
-      chunkSamples=Math.floor(20*1024*1024/2);
-      totalParts=Math.max(1,Math.ceil(decoded.len/chunkSamples));
+      if(!chunkSamples){
+        chunkSamples=Math.floor(20*1024*1024/2);
+        totalParts=Math.max(1,Math.ceil(decoded.len/chunkSamples));
+      }
     }
     const t0=performance.now();
     timer=setInterval(()=>{const el=$('#api-elapsed');if(el)el.textContent=fmtClock(performance.now()-t0)},500);
-    const segs=[];
-    for(let i=0;i<totalParts;i++){
+    const segs=[...priorSegs];
+    let curModel=CFG.model;
+    const triedModels=new Set([curModel]);
+    let i=startPart;
+    while(i<totalParts){
       if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
       const base=totalParts>1?`Partie ${i+1}/${totalParts} — `:'';
       let part;
       if(decoded){
         const o=i*chunkSamples,end=Math.min(o+chunkSamples,decoded.len);
         $('#api-phase').textContent=base+'Préparation de l\u2019extrait';
-        $('#api-detail').textContent=`Conversion de l\u2019extrait ${i+1}/${totalParts} en WAV mono…`;
+        $('#api-detail').textContent='Conversion de l\u2019extrait en WAV mono…';
         part={blob:encodeWav(monoSlice(decoded,o,end),rate),ext:'wav',offsetMs:Math.round(o/rate*1000)};
       }else{
         part={blob,ext:blobExt(blob,sess.audioExt),offsetMs:0};
       }
       $('#api-phase').textContent=base+'Envoi de l\u2019audio';
-      $('#api-detail').textContent=`Whisper ${shortModel()} · ${(part.blob.size/1048576).toFixed(1)} Mo`;
-      const rs=await groqPostPart(part,key,sess,ctl.signal,(label,detail)=>{
-        const p=$('#api-phase'),d=$('#api-detail');
-        if(p)p.textContent=label;
-        if(d)d.textContent=detail;
-      });
+      $('#api-detail').textContent='Whisper '+(curModel.includes('turbo')?'turbo':'large-v3')+' · '+(part.blob.size/1048576).toFixed(1)+' Mo';
+      let rs;
+      try{
+        rs=await groqPostPart(part,key,sess,ctl.signal,(label,detail)=>{
+          const p=$('#api-phase'),d=$('#api-detail');
+          if(p)p.textContent=label;
+          if(d)d.textContent=detail;
+        },curModel);
+      }catch(e){
+        if(e&&e.rateLimited){
+          /* quota du modèle épuisé → bascule sur l'autre modèle (quota distinct) */
+          const alt=curModel.includes('turbo')?'whisper-large-v3':'whisper-large-v3-turbo';
+          if(!triedModels.has(alt)){
+            triedModels.add(alt);
+            toast('Quota « '+curModel+' » atteint — bascule sur « '+alt+' » (quota séparé).','info',3600);
+            curModel=alt;
+            continue; /* rejoue la même partie */
+          }
+          /* déjà en repli : progression sauvegardée, arrêt propre */
+          if(segs.length&&totalParts>1){
+            sess.trProgress={doneParts:i,totalParts,chunkSamples,segs};
+            await dbPut('sessions',sess);
+          }
+          const mins=Math.max(1,Math.round((e.retryInMs||600000)/60000));
+          throw new Error('quota horaire Groq atteint. '+(segs.length?'La progression ('+i+'/'+totalParts+' parties) est sauvegardée — relancez « Transcrire » dans environ '+mins+' min : la reprise repartira de la partie '+(i+1)+'.':'Réessayez dans environ '+mins+' min.'));
+        }
+        throw e;
+      }
       segs.push(...rs);
-      $('#api-phase').textContent=base+'Transcription';
+      if(totalParts>1){
+        sess.trProgress={doneParts:i+1,totalParts,chunkSamples,segs};
+        await dbPut('sessions',sess);
+      }
+      i++;
     }
     decoded=null;
     clearInterval(timer);timer=null;
     if(!segs.length)throw new Error('aucune parole détectée dans l\u2019enregistrement');
+    delete sess.trProgress;
     sess.segments=segs;
     await dbPut('sessions',sess);
     composerHide();
@@ -1455,7 +1499,7 @@ async function runApiTranscription(sess){
     releaseWakeLock();
     if(e&&e.name==='AbortError'){toast('Transcription annulée.','info');return false}
     const msg=e&&e.message?e.message:'erreur inconnue';
-    toast('Transcription impossible : '+msg,'warn',5600);
+    toast('Transcription : '+msg,'warn',8000);
     return false;
   }
 }
