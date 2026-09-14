@@ -2264,8 +2264,10 @@ function buildPDF(sel,s,fonts){
   const doc=new jsPDF('p','pt','a4');
   const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
   const M=58,CW=W-2*M,BOT=H-70;
-  const INK='#1B1B18',GRAY='#6F6F68',HAIR='#DBDBD3',ACCENT='#B4530A';
+  const INK='#1B1B18',GRAY='#6F6F68',LEADGRAY='#5A5A52',HAIR='#DBDBD3',ACCENT='#B4530A';
   const LEAD=15,BODY=10;
+
+  /* ---- Police : EchoSans (DejaVu, Unicode) si chargée, sinon helvetica ---- */
   let F='helvetica',UNICODE=false;
   if(fonts&&fonts.r&&fonts.b){
     try{
@@ -2274,11 +2276,23 @@ function buildPDF(sel,s,fonts){
       doc.addFileToVFS('EchoBold.ttf',fonts.b);
       doc.addFont('EchoBold.ttf','EchoSans','bold');
       F='EchoSans';UNICODE=true;
-    }catch(e){F='helvetica'}
+    }catch(e){F='helvetica';UNICODE=false}
   }
+  /* Translittération de repli (hors ligne). Appliquée AVANT toute mesure
+     de largeur : les deux se font sur la même chaîne — plus aucun
+     débordement ni artefact de mesure. */
   const MAP={'\u2014':'-','\u2013':'-','\u2011':'-','\u2026':'...','\u2019':"'",'\u2018':"'",'\u201C':'"','\u201D':'"','\u00AB':'"','\u00BB':'"','\u00B7':'-','\u2022':'-','\u0153':'oe','\u0152':'OE'};
-  const fall=t=>UNICODE?String(t):String(t).replace(/[\u2014\u2013\u2011\u2026\u2019\u2018\u201C\u201D\u00AB\u00BB\u00B7\u2022\u0153\u0152]/g,m=>MAP[m]);
+  const RE=/[\u2014\u2013\u2011\u2026\u2019\u2018\u201C\u201D\u00AB\u00BB\u00B7\u2022\u0153\u0152]/;
+  const fall=t=>{
+    const str=String(t==null?'':t);
+    if(UNICODE||!RE.test(str))return str;
+    return str.replace(/[\u2014\u2013\u2011\u2026\u2019\u2018\u201C\u201D\u00AB\u00BB\u00B7\u2022\u0153\u0152]/g,m=>MAP[m]);
+  };
+
   let y=M+8;
+  /* Chaque fragment porte son état complet ; draw() réinitialise
+     police + couleur avant chaque fragment — plus d'état hérité
+     entre blocs (source des gris résiduels). */
   const setF=(st,size)=>{doc.setFont(F,st);doc.setFontSize(size)};
   const tw=(t,st,size)=>{setF(st,size);return doc.getTextWidth(t)};
   function hardChunks(word,st,size,maxW){
@@ -2295,7 +2309,8 @@ function buildPDF(sel,s,fonts){
     const put=(t,st,c,w)=>{lines[lines.length-1].push({t,st,c,w});x+=w};
     for(const r of runs){
       const st=r.s||'normal';
-      const src=fall(r.t==null?'':r.t).replace(/[\u00A0\u202F]/g,' ');
+      /* mesure et dessin sur le texte translittéré — identiques */
+      const src=fall(r.t).replace(/[\u00A0\u202F]/g,' ');
       for(const w of src.split(/\s+/).filter(Boolean)){
         const parts=tw(w,st,size)<=maxW?[w]:hardChunks(w,st,size,maxW);
         for(const p of parts){
@@ -2314,7 +2329,8 @@ function buildPDF(sel,s,fonts){
       if(y>BOT){doc.addPage();y=M+8}
       let x=M+(i===0?indent:hang);
       for(const tk of ln){
-        setF(tk.st,size);doc.setTextColor(tk.c||INK);
+        setF(tk.st,size);
+        doc.setTextColor(tk.c||INK);
         doc.text(tk.t,x,y);
         x+=tk.w;
       }
@@ -2322,20 +2338,32 @@ function buildPDF(sel,s,fonts){
     });
   }
   const para=(runs,o={})=>draw(wrap(runs,o.size||BODY,o.maxW||CW-(o.hang||0)),o);
+
   const {root,keep,textOf,stampOf}=_expHelpers(sel);
-  setF('bold',8);doc.setTextColor(ACCENT);
+
+  /* ================= EN-TÊTE ================= */
+  /* Bandeau : famille du corps, interlettrage doux, jamais d'héritage. */
+  setF('bold',8);
+  doc.setTextColor(ACCENT);
+  doc.setCharSpace(0.6);
   doc.text(fall('ÉCHO — NOTE DE SYNTHÈSE'),M,y);
-  y+=26;
-  para([{t:s.title,s:'bold'}],{size:18,lead:22});
-  y+=2;
+  doc.setCharSpace(0);
+  y+=24;
+  /* Titre : 14 pt gras — même famille que les titres de section (12 pt).
+     C'était le 18 pt qui « sortait » de la famille typographique. */
+  para([{t:s.title,s:'bold'}],{size:14,lead:19});
+  y+=1;
+  /* Métadonnées : style strictement identique aux mentions du document. */
   const words=s.segments&&s.segments.length?wordCount(s.segments.map(x=>x.text).join(' ')):0;
   para([{t:(TYPE_LABEL[s.type]||'Enregistrement')+'   ·   '+fmtDate(s.createdAt)+'   ·   '+fmtDurLong(s.durationMs)+(words?'   ·   '+words+' mots':''),c:GRAY}],{size:8,lead:11});
-  y+=7;
+  y+=9;
   const leadEl=root.querySelector('.doc-lead');
   if(leadEl&&keep(leadEl)){
-    para([{t:leadEl.textContent.trim(),s:'italic',c:'#3A3A34'}],{size:10,lead:14});
+    para([{t:leadEl.textContent.trim(),c:LEADGRAY}],{size:10,lead:14});
     y+=6;
   }
+
+  /* ================= SECTIONS ================= */
   root.querySelectorAll('.sec').forEach(sec=>{
     if(!keep(sec))return;
     const tit=sec.querySelector('.sec-title'),numEl=sec.querySelector('.sec-n'),ts=stampOf(sec);
@@ -2344,10 +2372,13 @@ function buildPDF(sel,s,fonts){
     runs.push({t:(tit?tit.textContent.trim():'')||'Section',s:'bold'});
     if(ts)runs.push({t:'   ['+ts+']',c:GRAY});
     const head=wrap(runs,12,CW);
+    /* Titre jamais orphelin : saut de page s'il reste moins que
+       le titre + deux lignes de corps. */
     if(y+16+head.length*16+2*LEAD>BOT){doc.addPage();y=M+8}
+    /* Filet aéré, jamais en collision avec l'en-tête ni le haut de page */
     doc.setDrawColor(HAIR);doc.setLineWidth(0.7);
-    doc.line(M,y-11,W-M,y-11);
-    y+=5;
+    if(y>M+22)doc.line(M,y-13,W-M,y-13);
+    y+=7;
     draw(head,{size:12,lead:16});
     y+=3;
     const body=sec.querySelector('.sec-body');
@@ -2391,11 +2422,15 @@ function buildPDF(sel,s,fonts){
     }
     y+=8;
   });
+
+  /* ================= PIED DE PAGE ================= */
   const total=doc.internal.getNumberOfPages();
   const short=s.title.length>60?s.title.slice(0,59)+'…':s.title;
   for(let i=1;i<=total;i++){
     doc.setPage(i);
-    setF('normal',7.5);doc.setTextColor(GRAY);
+    setF('normal',7.5);
+    doc.setTextColor(GRAY);
+    doc.setCharSpace(0);
     doc.text(fall(short),M,H-36);
     doc.text(fall('Écho '+PDF_BUILD+'   ·   '+i+' / '+total),W-M,H-36,{align:'right'});
   }
