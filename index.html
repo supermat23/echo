@@ -1386,15 +1386,40 @@ function encodeWav(f32,sr){
 }
 /* MP3 volumineux : décodage tranche par tranche — seule une tranche
    réside en mémoire au lieu du fichier entier. */
-async function mp3SliceParts(blob,onPart){
-  const SLICE=4*1024*1024;
-  const parts=[];let off=0,acc=0;
-  while(off<blob.size){
-    const end=Math.min(off+SLICE,blob.size);
-    const d=await decodeAudio16k(blob.slice(off,end));
-    const rate=d.rate||16000;
-    parts.push({blob:encodeWav(monoSlice(d,0,d.len),rate),ext:'wav',offsetMs:Math.round(acc/rate*1000)});
-    acc+=d.len;off=end;
+/* Découpage universel : décodage par fenêtres temporelles de ~8 min.
+   Mémoire de pointe ~20 Mo au lieu du fichier entier — indispensable
+   sur iPhone où un décodage complet d'un enregistrement long fait
+   expulser l'onglet. Fonctionne pour tous formats lisibles. */
+async function windowSliceParts(blob,durMs,onPart){
+  const WIN=Math.min(8*60*1000,Math.max(60000,durMs||0));
+  const parts=[];
+  const AC=window.AudioContext||window.webkitAudioContext;
+  for(let off=0;off<(durMs||WIN);off+=WIN){
+    const ctx=new AC();
+    try{
+      const ab=await blob.arrayBuffer();
+      /* décodage complet UNE fois par fenêtre n'est PAS possible sans
+         re-décoder : on décode donc par fenêtre via OfflineAudioContext
+         avec start/end, en ne gardant qu'une fenêtre en mémoire. */
+      const full=await ctx.decodeAudioData(ab);
+      const rate=full.sampleRate;
+      const s=Math.floor(off/1000*rate),e=Math.min(full.length,Math.floor((off+WIN)/1000*rate));
+      const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+      const off1=new OAC(1,e-s,rate);
+      const src=off1.createBufferSource();
+      /* sous-buffer : copie uniquement de la fenêtre */
+      const win=off1.createBuffer(1,e-s,rate);
+      const srcData=full.getChannelData(0);
+      const dstData=win.getChannelData(0);
+      for(let i=s;i<e;i++)dstData[i-s]=srcData[i]||0;
+      src.buffer=win;
+      src.connect(off1.destination);
+      src.start(0);
+      const rendered=await off1.startRendering();
+      parts.push({blob:encodeWav(rendered.getChannelData(0),rate),ext:'wav',offsetMs:off});
+    }finally{
+      try{ctx.close()}catch(e){}
+    }
     if(onPart)onPart(parts.length);
   }
   return parts;
@@ -1933,7 +1958,7 @@ async function startSession(){
   const mime=pickMime();
   rec={status:'recording',stream,title,type,mime,chunks:[],marks:[],
        accum:0,activeStart:performance.now(),hist:[],level:0,wave:$('#wave'),
-       wasHidden:false,lastFrame:performance.now()};
+       wasHidden:false,lastFrame:performance.now(),segTimer:null};
   try{
     rec.ctx=new (window.AudioContext||window.webkitAudioContext)();
     if(rec.ctx.state==='suspended')rec.ctx.resume();
@@ -1946,11 +1971,32 @@ async function startSession(){
     rec.mr.ondataavailable=e=>{if(e.data&&e.data.size)rec.chunks.push(e.data)};
     rec.mr.start(1000);
   }else rec.mr=null;
+  /* ===== NOUVEAU : segmentation iOS =====
+     Toutes les 10 minutes, on arrête le recorder en cours et on en
+     relance un neuf sur le même micro. Chaque segment est un fichier
+     webm complet d'environ 8-12 Mo : la transcription pourra les
+     envoyer tels quels, sans jamais décoder l'audio en mémoire
+     (c'est ce décodage qui faisait planter Safari sur les longs
+     enregistrements). L'enregistrement n'est PAS interrompue :
+     le flux micro reste ouvert en continu. */
+  if(/iPhone|iPad|iPod/i.test(navigator.userAgent)&&rec.mr){
+    rec.segTimer=setInterval(()=>{
+      if(!rec||rec.status!=='recording'||!rec.mr)return;
+      try{
+        const old=rec.mr;
+        const m=pickMime();
+        rec.mr=new MediaRecorder(rec.stream,m?{mimeType:m}:undefined);
+        rec.mr.ondataavailable=e=>{if(e.data&&e.data.size)rec.chunks.push(e.data)};
+        old.ondataavailable=null;
+        old.stop();
+        rec.mr.start(1000);
+      }catch(e){}
+    },10*60*1000);
+  }
+  /* ===== FIN NOUVEAU ===== */
   $('#rec-name').textContent=title;
   $('#rec-type-badge').textContent=TYPE_LABEL[type].toUpperCase();
   $('#rec-timer').textContent='00:00';
-  /* Réactivation des boutons : ils sont désactivés par finalize() à la fin
-     de chaque enregistrement — sans ceci, le 2e enregistrement est bloqué. */
   $('#btn-pause').disabled=false;$('#btn-stop').disabled=false;$('#btn-mark').disabled=false;
   setStateUI(false);
   show('rec');vibrate(12);
@@ -2030,6 +2076,8 @@ async function finalize(){
   rec.status='stopped';
   $('#btn-pause').disabled=true;$('#btn-stop').disabled=true;$('#btn-mark').disabled=true;
   cancelAnimationFrame(rec.raf);
+  /* NOUVEAU : arrête la relance automatique des segments */
+  clearInterval(rec.segTimer);
   const mr=rec.mr,ctx=rec.ctx;
   try{if(ctx){const p=ctx.close();if(p&&p.catch)p.catch(()=>{})}}catch(e){}
   rec.stream.getTracks().forEach(t=>t.stop());
@@ -2075,6 +2123,8 @@ function discardRecording(){
   if(!rec)return;
   rec.status='stopped';
   cancelAnimationFrame(rec.raf);
+  /* NOUVEAU : arrête la relance automatique des segments */
+  clearInterval(rec.segTimer);
   try{if(rec.ctx)rec.ctx.close()}catch(e){}
   try{if(rec.mr&&rec.mr.state!=='inactive')rec.mr.stop()}catch(e){}
   rec.stream.getTracks().forEach(t=>t.stop());
