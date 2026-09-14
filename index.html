@@ -1176,6 +1176,7 @@ async function runAIDraft(sess){
       <button class="btn-skipc ai-cancel" id="aiw-cancel">Interrompre</button>
     </div>`;
   const ctl=new AbortController();
+  grabWakeLock();
   $('#aiw-cancel').onclick=()=>ctl.abort();
   const t0=performance.now();
   const tm=setInterval(()=>{const el=$('#aiw-elapsed');if(el)el.textContent=fmtClock(performance.now()-t0)},500);
@@ -1243,6 +1244,7 @@ async function runAIDraft(sess){
     await dbPut('sessions',sess);
     clearInterval(tm);
     composerHide();
+    releaseWakeLock();
     renderDocBody(sess);
     show('doc');
     toast('Résumé IA rédigé — cliquez les horodatages pour vérifier à l\u2019audio.','ok',3600);
@@ -1250,6 +1252,7 @@ async function runAIDraft(sess){
   }catch(e){
     clearInterval(tm);
     composerHide();
+    releaseWakeLock();
     if(e&&e.name==='AbortError'){toast('Rédaction interrompue — l\u2019analyse locale reste disponible (menu ⋯).','info');return false}
     if(e&&e.tpmTooLarge){
       toast('Le résumé dépasse le quota de jetons du modèle '+AI.model+' — réessayez dans quelques minutes, ou réduisez la durée ciblée.','warn',7000);
