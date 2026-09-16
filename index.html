@@ -116,6 +116,7 @@ body[data-view="rec"] #topbar{display:none}
 .rec-state.paused .dot{background:var(--muted);animation:none}
 .wave-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;border:1px solid var(--line);border-radius:16px;background:var(--surface);padding:12px 10px;min-height:150px}
 #wave{display:block;width:100%;height:140px}
+.rec-parts{margin-top:10px;font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center}
 .bg-hint{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:12px;line-height:1.5;color:var(--muted)}
 .bg-hint svg{flex:none;margin-top:1px;color:var(--green)}
 .rec-controls{position:sticky;bottom:0;display:flex;align-items:center;justify-content:center;gap:34px;padding:20px 0 calc(24px + env(safe-area-inset-bottom));background:var(--bg);margin-top:14px}
@@ -130,6 +131,7 @@ body[data-view="rec"] #topbar{display:none}
 #dim .dim-timer{font:500 14px var(--mono);color:rgba(237,238,232,.4);letter-spacing:.1em}
 #dim .dim-hint{font:400 10px var(--mono);color:rgba(237,238,232,.28);letter-spacing:.16em;text-transform:uppercase;margin-top:22px}
 .player{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:13px;padding:11px 2px;background:rgba(12,14,11,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);margin-bottom:8px}
+.player[hidden]{display:none}
 .pl-btn{flex:none;width:42px;height:42px;border-radius:50%;background:var(--orange);color:#1A0F04;display:flex;align-items:center;justify-content:center;transition:transform .12s}
 .pl-btn:active{transform:scale(.92)}
 .pl-mid{flex:1;min-width:0}
@@ -186,6 +188,11 @@ body[data-view="rec"] #topbar{display:none}
 .note-tag{font:600 9px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--orange)}
 .note-text{font:400 14.5px/1.58 var(--serif);margin-top:7px;min-height:22px}
 .note-text:empty::before{content:attr(data-ph);color:rgba(150,156,143,.5);font-style:italic}
+.tr-lazy{margin-top:2px}
+.tr-lazy summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px;padding:9px 0;font:600 13px var(--sans);color:var(--muted)}
+.tr-lazy summary::-webkit-details-marker{display:none}
+.tr-lazy summary::before{content:"";width:7px;height:7px;border-right:1.5px solid var(--orange);border-bottom:1.5px solid var(--orange);transform:rotate(-45deg);transition:transform .2s}
+.tr-lazy[open] summary::before{transform:rotate(45deg)}
 .tr-lines{margin-top:4px}
 .tr-line{display:flex;gap:14px;padding:8px 0;border-top:1px solid rgba(237,238,232,.05)}
 .tr-line:first-child{border-top:none}
@@ -274,6 +281,8 @@ body[data-view="rec"] #topbar{display:none}
 .ai-phase{font:600 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--orange)}
 .ai-detail{font:400 13px/1.55 var(--sans);color:var(--muted);margin-top:9px}
 .ai-elapsed{margin-top:10px;font:500 11px var(--mono);color:var(--muted)}
+.ai-bar{height:4px;border-radius:3px;background:var(--line);margin-top:14px;overflow:hidden}
+.ai-bar i{display:block;height:100%;width:0;background:var(--orange);transition:width .3s}
 .ai-cancel{margin:18px auto 0;display:inline-flex}
 .composer-note{margin-top:24px;text-align:center;font:400 10px var(--mono);letter-spacing:.1em;color:rgba(150,156,143,.6);line-height:1.6}
 #toast-root{position:fixed;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:120;pointer-events:none;padding:0 20px}
@@ -310,6 +319,7 @@ body[data-view="rec"] #topbar{display:none}
   #app .view{display:none!important}
   #app #view-doc{display:block!important}
   .sheet{border:none;background:#fff;padding:0}
+  .tr-lazy summary{display:none!important}
   .doc-title,.sec-title,.sub-head{color:#111}
   .sheet-body,.sec-body p,.keylist li,.tr-text,.doc-lead,.sec-note{color:#222!important}
   .doc-lead,.sec-note,.notion-quote,.notion-meta,.doc-eyebrow{color:#666!important}
@@ -360,7 +370,7 @@ body[data-view="rec"] #topbar{display:none}
         </div>
         <div class="import-box">
           <button class="import-btn" id="btn-import"></button>
-          <input id="file-import" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.oga,.webm,.aac,.flac,.opus" hidden>
+          <input id="file-import" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.oga,.webm,.aac,.flac,.opus" hidden multiple>
           <p class="import-note">MP3, M4A, WAV, OGG… — un seul fichier ou plusieurs parties d'un même enregistrement (sélectionnées ensemble, dans l'ordre), transcrits comme un seul document.</p>
         </div>
         <button class="setup-banner" id="setup-banner"></button>
@@ -394,6 +404,7 @@ body[data-view="rec"] #topbar{display:none}
       <div class="rec-state" id="rec-state"><span class="dot"></span><span id="rec-state-txt">En cours</span></div>
     </div>
     <div class="wave-wrap"><canvas id="wave"></canvas></div>
+    <p class="rec-parts" id="rec-parts"></p>
     <p class="bg-hint" id="bg-hint"></p>
     <div class="rec-controls">
       <button class="rec-btn" id="btn-mark" title="Poser un repère"></button>
@@ -404,7 +415,7 @@ body[data-view="rec"] #topbar{display:none}
 
   <!-- ============ DOCUMENT ============ -->
   <section id="view-doc" class="view">
-    <div class="player no-print" id="player">
+    <div class="player no-print" id="player" hidden>
       <button class="pl-btn" id="pl-play" aria-label="Lecture"></button>
       <div class="pl-mid">
         <div class="pl-times"><span id="pl-cur">00:00</span><span id="pl-dur">00:00</span></div>
@@ -502,9 +513,29 @@ body[data-view="rec"] #topbar{display:none}
     </div>
 
     <div class="set-group">
+      <p class="set-title">Qualité d'enregistrement</p>
+      <p class="set-intro" style="margin-top:8px">L'enregistrement est découpé automatiquement en morceaux de 5 minutes, sauvegardés au fur et à mesure : la mémoire reste stable quelle que soit la durée, et une coupure ne fait perdre que le morceau en cours.</p>
+      <div class="model-cards" style="margin-top:14px">
+        <button class="model-card" data-bps="32000">
+          <span class="model-name">Léger — 32 kb/s</span>
+          <span class="model-desc">≈ 14 Mo par heure. Voix proche, salle calme.</span>
+        </button>
+        <button class="model-card active" data-bps="64000">
+          <span class="model-name">Équilibré — 64 kb/s</span>
+          <span class="model-desc">≈ 28 Mo par heure. Recommandé (amphi, réunion).</span>
+        </button>
+        <button class="model-card" data-bps="128000">
+          <span class="model-name">Détaillé — 128 kb/s</span>
+          <span class="model-desc">≈ 56 Mo par heure. Salle difficile, micro éloigné.</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="set-group">
       <p class="set-title">Application installable</p>
       <p class="set-intro" style="margin-top:8px">Sur Android (Chrome) : menu ⋯ puis «&nbsp;Ajouter à l'écran d'accueil&nbsp;». L'application s'ouvre ensuite hors ligne si un <span class="mono">sw.js</span> est présent à côté de la page.</p>
       <p class="set-status" id="pwa-status"></p>
+      <p class="set-status" id="quota-status"></p>
       <div class="key-actions">
         <button class="btn-ghost" id="btn-sw-dl"></button>
       </div>
@@ -553,10 +584,12 @@ const vibrate=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
 const fmtClock=ms=>{const s=Math.max(0,Math.round(ms/1000));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60,p=n=>String(n).padStart(2,'0');return h?`${h}:${p(m)}:${p(ss)}`:`${p(m)}:${p(ss)}`};
 const fmtDate=ts=>new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(ts));
 const fmtDurLong=ms=>{const s=Math.round(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=s%60,p=n=>String(n).padStart(2,'0');return h?`${h} h ${p(m)} min`:`${m} min ${p(ss)} s`};
+const fmtMo=b=>(b/1048576).toFixed(b<10485760?1:0)+' Mo';
 const slug=s=>norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60)||'enregistrement';
 const wordCount=t=>(String(t).trim().match(/\S+/g)||[]).length;
 const roman=n=>['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX'][n]||String(n+1);
-function downloadBlob(b,name){const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
+const isIOS=()=>/iPad|iPhone|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function downloadBlob(b,name){const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),8000)}
 
 /* ==================== ICÔNES ==================== */
 const ICONS={
@@ -593,7 +626,8 @@ key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 8-8M16 4.5 19.5 8M13.5 7l3 3"
 cloud:'<path d="M7 18.5a4.5 4.5 0 1 1 .7-8.95A6 6 0 0 1 19.4 11.4 3.6 3.6 0 0 1 18.5 18.5Z"/>',
 spark:'<path d="M12 3.5l1.9 6.1 6.1 1.9-6.1 1.9L12 19.5l-1.9-6.1L4 11.5l6.1-1.9z"/>',
 moon:'<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/>',
-upload:'<path d="M12 19V8m0 0-4.2 4.2M12 8l4.2 4.2M5 4.5h14"/>'};
+upload:'<path d="M12 19V8m0 0-4.2 4.2M12 8l4.2 4.2M5 4.5h14"/>',
+shield:'<path d="M12 3.5 5 6.2v5.3c0 4 2.9 7.7 7 8.9 4.1-1.2 7-4.9 7-8.9V6.2Z"/><path d="m9 12 2.2 2.2L15.5 10"/>'};
 function icon(n,s=18){return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`}
 
 /* ==================== TOAST / MODAL / FEUILLE ==================== */
@@ -605,21 +639,14 @@ function toast(msg,type='ok',dur=2600){
 }
 async function copyText(t){
   try{
-    if(navigator.clipboard&&navigator.clipboard.writeText){
-      await navigator.clipboard.writeText(t);
-      return true;
-    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(t);return true}
   }catch(e){}
   return new Promise(res=>{
     const ta=document.createElement('textarea');
-    ta.value=t;
-    ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
-    document.body.appendChild(ta);
-    ta.focus();ta.select();
-    let ok=false;
-    try{ok=document.execCommand('copy')}catch(e){}
-    ta.remove();
-    res(ok);
+    ta.value=t;ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    let ok=false;try{ok=document.execCommand('copy')}catch(e){}
+    ta.remove();res(ok);
   });
 }
 let _modalGen=0;
@@ -652,28 +679,52 @@ function openSheet(title,items){
   bs.querySelectorAll('.bs-item[data-i]').forEach(b=>b.onclick=()=>{const it=items[+b.dataset.i];close();setTimeout(()=>it.fn&&it.fn(),120)});
 }
 
-/* ==================== STOCKAGE INDEXEDDB ==================== */
-const DB_NAME='echo-db',DB_VER=1;let _db=null,useMem=false;
-const MEM={sessions:new Map(),audio:new Map()};
+/* ==================== STOCKAGE INDEXEDDB ====================
+   v2 : ajout d'un magasin « meta » (fiches légères) pour que l'accueil
+   n'ait plus à charger toutes les transcriptions en mémoire. */
+const DB_NAME='echo-db',DB_VER=2;let _db=null,useMem=false;
+const MEM={sessions:new Map(),audio:new Map(),meta:new Map()};
 async function db(){
   if(_db)return _db;
   try{_db=await new Promise((res,rej)=>{
     const r=indexedDB.open(DB_NAME,DB_VER);
     r.onupgradeneeded=()=>{const d=r.result;
       if(!d.objectStoreNames.contains('sessions'))d.createObjectStore('sessions',{keyPath:'id'});
-      if(!d.objectStoreNames.contains('audio'))d.createObjectStore('audio',{keyPath:'id'})};
+      if(!d.objectStoreNames.contains('audio'))d.createObjectStore('audio',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('meta'))d.createObjectStore('meta',{keyPath:'id'})};
     r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('blocked'))
   })}catch(e){useMem=true}
   return _db;
 }
 async function dbPut(store,val){const d=await db();if(useMem||!d){MEM[store].set(val.id,val);return}
-  return new Promise((res,rej)=>{const tx=d.transaction(store,'readwrite');tx.objectStore(store).put(val);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
+  return new Promise((res,rej)=>{const tx=d.transaction(store,'readwrite');tx.objectStore(store).put(val);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
 async function dbGet(store,key){const d=await db();if(useMem||!d)return MEM[store].get(key);
   return new Promise((res,rej)=>{const q=d.transaction(store,'readonly').objectStore(store).get(key);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
 async function dbAll(store){const d=await db();if(useMem||!d)return [...MEM[store].values()];
   return new Promise((res,rej)=>{const q=d.transaction(store,'readonly').objectStore(store).getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error)})}
+async function dbKeys(store){const d=await db();if(useMem||!d)return [...MEM[store].keys()];
+  return new Promise((res,rej)=>{const q=d.transaction(store,'readonly').objectStore(store).getAllKeys();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error)})}
 async function dbDel(store,key){const d=await db();if(useMem||!d){MEM[store].delete(key);return}
-  return new Promise((res,rej)=>{const tx=d.transaction(store,'readwrite');tx.objectStore(store).delete(key);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}
+  return new Promise((res,rej)=>{const tx=d.transaction(store,'readwrite');tx.objectStore(store).delete(key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+function storageError(e){
+  const n=(e&&(e.name||e.message))||'';
+  if(/quota|QuotaExceeded/i.test(n))toast('Espace de stockage saturé — supprimez d\u2019anciens enregistrements pour continuer.','warn',7000);
+  else toast('Écriture impossible ('+(n||'erreur')+').','warn',5000);
+}
+/* Fiche légère utilisée par la bibliothèque */
+const metaOf=s=>({id:s.id,title:s.title,type:s.type,createdAt:s.createdAt,durationMs:s.durationMs||0,
+  imported:!!s.imported,hasDoc:!!s.docHTML,parts:(s.parts||[]).length,
+  words:s.words||(s.segments?wordCount(s.segments.map(x=>x.text).join(' ')):0)});
+async function saveSession(s){
+  try{
+    s.words=(s.segments?wordCount(s.segments.map(x=>x.text).join(' ')):0);
+    await dbPut('sessions',s);
+    await dbPut('meta',metaOf(s));
+  }catch(e){storageError(e);throw e}
+}
+async function deleteSession(id){
+  await dbDel('sessions',id);await dbDel('meta',id);await dbDel('audio',id);
+}
 
 /* ==================== CONFIGURATION ==================== */
 /* Collez ici votre clé Groq pour l'activer par défaut (optionnel). */
@@ -684,10 +735,12 @@ const CFG={
   get model(){return localStorage.getItem('echo_model')||'whisper-large-v3'},
   set model(v){localStorage.setItem('echo_model',v)},
   get lang(){return localStorage.getItem('echo_lang')||'fr'},
-  set lang(v){localStorage.setItem('echo_lang',v)}
+  set lang(v){localStorage.setItem('echo_lang',v)},
+  get bps(){return +(localStorage.getItem('echo_bps')||64000)},
+  set bps(v){localStorage.setItem('echo_bps',String(v))}
 };
-const shortModel=()=>CFG.model.includes('turbo')?'turbo':'large-v3';
 /* Groq uniquement (les autres fournisseurs bloquent les appels navigateur). */
+const GROQ_URL='https://api.groq.com/openai/v1/audio/transcriptions';
 const GROQ_CHAT='https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODELS='https://api.groq.com/openai/v1/models';
 const AI_DEFAULT_MODEL='openai/gpt-oss-120b';
@@ -719,7 +772,7 @@ const autoTemp=m=>/gpt-oss/.test(m)?1.0:/deepseek-r1/.test(m)?0.6:0.25;
 
 /* ==================== ÉTAT ==================== */
 const TYPE_LABEL={cours:'Cours',reunion:'Réunion',conversation:'Conversation'};
-const state={current:null,editing:false,audioBlob:null,audioUrl:null,newType:'cours',sessions:[],pending:null};
+const state={current:null,editing:false,newType:'cours',sessions:[],pending:null};
 let rec=null;
 function show(view){
   document.body.dataset.view=view;
@@ -866,7 +919,7 @@ function lexPick(P,lex){
 }
 function pipeLex(P){P.decisions=lexPick(P,LEX_DECISION);P.actions=lexPick(P,LEX_ACTION)}
 
-/* ==================== CONSTRUCTION DU DOCUMENT (ANALYSE LOCALE) ==================== */
+/* ==================== CONSTRUCTION DU DOCUMENT ==================== */
 function ktHTML(t){return `<span class="kt" data-t="${Math.round(t)}" title="Écouter à ce moment">${fmtClock(t)}</span>`}
 function listHTML(sents){
   return `<ul class="keylist">${sents.map(s=>`<li>${ktHTML(s.t)}${esc(s.text)}</li>`).join('')}</ul>`;
@@ -887,6 +940,23 @@ function notionsHTML(P){
         <a class="link-ref" target="_blank" rel="noopener" href="${sch}" data-href="${esc(sch)}">Recherche académique ${icon('ext',12)}</a>
       </div></div>`;
   }).join('');
+}
+/* La transcription intégrale n'est injectée qu'à l'ouverture : sur un cours
+   de 90 min, elle représente 1500 lignes et bloquait le rendu du document. */
+function transcriptLinesHTML(segs){
+  return (segs||[]).map(x=>`<div class="tr-line"><span class="kt tr-t" data-t="${Math.round(x.start)}">${fmtClock(x.start)}</span><span class="tr-text">${esc(x.text)}</span></div>`).join('');
+}
+function transcriptSectionHTML(segs){
+  return `<details class="tr-lazy"><summary>Afficher les ${segs.length} lignes horodatées</summary><div class="tr-lines" data-lazy="1"></div></details>`;
+}
+function fillLazy(root,segs){
+  if(!root||!segs||!segs.length)return;
+  const hosts=root.querySelectorAll?root.querySelectorAll('[data-lazy]'):[];
+  hosts.forEach(h=>{
+    if(h.dataset.done)return;
+    h.innerHTML=transcriptLinesHTML(segs);
+    h.dataset.done='1';
+  });
 }
 function buildDocHTML(P,s){
   const T=TYPE_LABEL[s.type]||'Enregistrement';
@@ -923,7 +993,7 @@ function buildDocHTML(P,s){
   if(s.marks&&s.marks.length)
     sec('Repères posés pendant l\u2019enregistrement',`<ul class="keylist">${s.marks.map(t=>`<li>${ktHTML(t)}repère manuel</li>`).join('')}</ul>`,s.marks[0],'resume');
   if(s.segments.length)
-    sec('Transcription intégrale',`<div class="tr-lines">${s.segments.map(x=>`<div class="tr-line"><span class="kt tr-t" data-t="${Math.round(x.start)}">${fmtClock(x.start)}</span><span class="tr-text">${esc(x.text)}</span></div>`).join('')}</div>`,s.segments[0].start,'transcript');
+    sec('Transcription intégrale',transcriptSectionHTML(s.segments),s.segments[0].start,'transcript');
   parts.push(`<p class="doc-colophon">Généré par Écho — les horodatages renvoient à l\u2019enregistrement audio d\u2019origine.</p>`);
   return parts.join('');
 }
@@ -1002,6 +1072,37 @@ Filtrage du hors-sujet : ne prends pas en compte les bavardages parasites — di
 Réponds uniquement avec ce JSON :
 {"metadonnees":{"titre":"...","discipline":"...","duree":"mm:ss","qualite_transcription":"...","note_qualite":"..."},"vue_densemble":"...","objectifs_pedagogiques":["..."],"sections":[{"numero":1,"titre":"...","depuis":"mm:ss","contenu":"...","points_importants":["..."],"exemples_et_applications":["..."],"chiffres_formules_donnees":["..."]}],"notions":[{"terme":"...","definition":"...","depuis":"mm:ss"}],"points_cles":["..."],"questions_revision":[{"question":"...","reponse":"..."}],"passages_a_verifier":[{"depuis":"mm:ss","probleme":"..."}]}`;
 }
+
+/* --- Quota de jetons : Groq annonce le budget restant dans les en-têtes.
+   On attend exactement ce qu'il faut au lieu d'une pause fixe de 35 s. --- */
+let RATE={tokens:Infinity,resetMs:0,at:0};
+function parseDur(s){
+  if(!s)return 0;let t=0;
+  for(const x of String(s).match(/(\d+(?:\.\d+)?)(ms|s|m|h)/g)||[]){
+    const v=parseFloat(x),u=x.replace(/[\d.]/g,'');
+    t+=u==='ms'?v:u==='s'?v*1000:u==='m'?v*60000:v*3600000;
+  }
+  return t;
+}
+function readRate(res){
+  try{
+    const rt=res.headers.get('x-ratelimit-remaining-tokens');
+    if(rt!=null&&rt!=='')RATE={tokens:+rt,resetMs:parseDur(res.headers.get('x-ratelimit-reset-tokens')),at:Date.now()};
+  }catch(e){}
+}
+async function waitForTokens(need,onWait,signal){
+  if(!isFinite(RATE.tokens)||RATE.tokens>=need)return;
+  const left=Math.max(0,RATE.resetMs-(Date.now()-RATE.at))+900;
+  if(left>600){
+    if(onWait)onWait(left);
+    const step=1000;
+    for(let w=0;w<left;w+=step){
+      if(signal&&signal.aborted)throw new DOMException('annulé','AbortError');
+      await wait(Math.min(step,left-w));
+    }
+    RATE.tokens=Infinity;
+  }
+}
 async function aiChat(messages,opts={}){
   let {maxTokens=3000,json=true,signal}=opts;
   const key=AI.key;
@@ -1030,18 +1131,19 @@ async function aiChat(messages,opts={}){
       catch(e){if(e&&e.name==='AbortError')throw e;throw new Error('connexion impossible')}
     }
     if(res.ok){
+      readRate(res);
       const data=await res.json();
       const ch=data&&data.choices&&data.choices[0];
       const msg=ch&&ch.message;
       const c=msg&&msg.content;
-      if((!c||!String(c).trim())&&ch&&ch.finish_reason==='length'&&maxTokens<7000){
+      if((!c||!String(c).trim())&&ch&&ch.finish_reason==='length'&&maxTokens<16000){
         /* la réponse a été coupée avant d'écrire le contenu :
-           relance avec un budget de sortie accru (2 relances max). */
-        maxTokens=Math.min(7000,maxTokens+2000);
+           relance avec un budget de sortie accru. */
+        maxTokens=Math.min(16000,maxTokens+4000);
         continue;
       }
       if(!c||!String(c).trim())
-        throw new Error('réponse vide du modèle — le raisonnement a consommé la limite de jetons malgré le budget étendu. Choisissez un modèle sans raisonnement (réglages ⚙, « Charger les modèles disponibles », par ex. moonshotai/kimi-k2-instruct), ou relancez.');
+        throw new Error('réponse vide du modèle — le raisonnement a consommé la limite de jetons. Choisissez un modèle sans raisonnement (réglages ⚙, « Charger les modèles disponibles », par ex. moonshotai/kimi-k2-instruct), ou relancez.');
       return c;
     }
     let err='erreur '+res.status;
@@ -1060,6 +1162,7 @@ async function aiChat(messages,opts={}){
         const ms=isNaN(ra)?60000:Math.min(Math.max(ra,10),90)*1000;
         if(opts.onWait)try{opts.onWait(ms)}catch(e2){}
         await wait(ms);
+        RATE.tokens=Infinity;
         continue;
       }
       throw new Error('quota Groq saturé — patientez une minute et relancez');
@@ -1077,11 +1180,30 @@ async function aiChat(messages,opts={}){
   }
   throw lastErr||new Error('échec inconnu');
 }
+/* Une réponse tronquée donne un document partiel plutôt qu'un échec sec. */
+function repairJSON(t){
+  let out='',stack=[],inStr=false,escch=false;
+  for(const ch of t){
+    if(inStr){if(escch)escch=false;else if(ch==='\\')escch=true;else if(ch==='"')inStr=false}
+    else if(ch==='"')inStr=true;
+    else if(ch==='{'||ch==='[')stack.push(ch);
+    else if(ch==='}'||ch===']')stack.pop();
+    out+=ch;
+  }
+  if(inStr)out+='"';
+  while(stack.length)out+=(stack.pop()==='{'?'}':']');
+  return out.replace(/,(\s*[}\]])/g,'$1').replace(/"[^"]*"\s*:\s*([}\]])/g,'$1');
+}
 function extractJSON(txt){
   let t=String(txt).trim().replace(/^```(?:json)?/i,'').replace(/```\s*$/,'').trim();
-  const s=t.indexOf('{'),e=t.lastIndexOf('}');
-  if(s>=0&&e>s)t=t.slice(s,e+1);
-  return JSON.parse(t);
+  const s=t.indexOf('{');
+  if(s>0)t=t.slice(s);
+  const e=t.lastIndexOf('}');
+  try{return JSON.parse(e>0?t.slice(0,e+1):t)}catch(err){}
+  try{return JSON.parse(repairJSON(t))}catch(err){}
+  const cut=Math.max(t.lastIndexOf('},'),t.lastIndexOf('],'),t.lastIndexOf('",'));
+  if(cut>0){try{return JSON.parse(repairJSON(t.slice(0,cut)))}catch(err){}}
+  throw new Error('réponse illisible du modèle');
 }
 function parseStamp(v){
   if(v==null)return null;
@@ -1159,7 +1281,7 @@ function buildAIDocHTML(D,s){
   if(s.marks&&s.marks.length)
     sec('Repères posés pendant l\u2019enregistrement',`<ul class="keylist">${s.marks.map(t=>`<li>${ktHTML(t)}repère manuel</li>`).join('')}</ul>`,s.marks[0],'resume');
   if(s.segments.length)
-    sec('Transcription intégrale',`<div class="tr-lines">${s.segments.map(x=>`<div class="tr-line"><span class="kt tr-t" data-t="${Math.round(x.start)}">${fmtClock(x.start)}</span><span class="tr-text">${esc(x.text)}</span></div>`).join('')}</div>`,s.segments[0].start,'transcript');
+    sec('Transcription intégrale',transcriptSectionHTML(s.segments),s.segments[0].start,'transcript');
   parts.push(`<p class="doc-colophon">${isCours?'Polycopié généré par IA':'Résumé rédigé par IA'} (${esc(s.aiModel||AI.model)}) à partir de la transcription automatique — bavardages et hors-sujets écartés. Les passages signalés « à vérifier » reflètent des défauts de la source. Cliquez les horodatages pour réécouter et vérifier.</p>`);
   return parts.join('');
 }
@@ -1176,20 +1298,23 @@ async function runAIDraft(sess){
   $('#composer-sub').textContent=sess.title;
   $('#ring-fg').style.strokeDashoffset=326.7;
   $('#ring-core').innerHTML=`<span class="spin">${icon('spark',30)}</span>`;
-  $('#composer-note').textContent='Le tier gratuit limite les jetons par minute : des pauses entre les lots sont normales.';
+  $('#composer-note').textContent='Le budget de jetons par minute est lu en direct : les pauses sont réduites au strict nécessaire.';
   $('#composer-body').innerHTML=`
     <div class="ai-stat">
       <p class="ai-phase" id="aiw-phase">Préparation</p>
       <p class="ai-detail" id="aiw-detail"></p>
+      <div class="ai-bar"><i id="aiw-bar"></i></div>
       <p class="ai-elapsed" id="aiw-elapsed">00:00</p>
       <button class="btn-skipc ai-cancel" id="aiw-cancel">Interrompre</button>
     </div>`;
   const ctl=new AbortController();
-  grabWakeLock();
+  grabWakeLock();startKeepAlive(sess.title);
   $('#aiw-cancel').onclick=()=>ctl.abort();
   const t0=performance.now();
   const tm=setInterval(()=>{const el=$('#aiw-elapsed');if(el)el.textContent=fmtClock(performance.now()-t0)},500);
   const phase=(a,b)=>{const p=$('#aiw-phase'),d=$('#aiw-detail');if(p)p.textContent=a;if(d)d.textContent=b||''};
+  const prog=r=>{const b=$('#aiw-bar');if(b)b.style.width=Math.max(0,Math.min(100,r*100)).toFixed(1)+'%';
+    $('#ring-fg').style.strokeDashoffset=(326.7*(1-Math.max(0,Math.min(1,r)))).toFixed(1)};
   try{
     const words=wordCount(sess.segments.map(x=>x.text).join(' '));
     phase('Préparation',words+' mots · '+AI.model);
@@ -1198,6 +1323,7 @@ async function runAIDraft(sess){
       let chunkWords=1400;
       let idx=0,lots=0;
       const SEGS=sess.segments;
+      const estLots=Math.max(2,Math.ceil(words/chunkWords));
       digest='';
       while(idx<SEGS.length){
         if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
@@ -1210,61 +1336,70 @@ async function runAIDraft(sess){
         if(idx===start){w=wordCount(SEGS[idx].text);idx++}
         const cs=SEGS.slice(start,idx);
         lots++;
-        phase('Analyse — lot '+lots,'Condensé du passage ('+w+' mots)…');
+        prog(0.7*(idx/SEGS.length));
+        await waitForTokens(Math.round(w*1.7)+1800,ms=>{
+          phase('Régulation du quota','Reprise dans '+Math.round(ms/1000)+' s — budget de jetons par minute.');
+        },ctl.signal);
+        phase('Analyse — lot '+lots+'/'+estLots,'Condensé du passage ('+w+' mots)…');
         let r;
         try{
           r=extractJSON(await aiChat([
             {role:'system',content:sys},
-            {role:'user',content:chunkPrompt(lots-1,Math.max(2,Math.ceil(words/chunkWords)),transcriptForAI(cs),isCours)}
-          ],{maxTokens:1500,signal:ctl.signal,onWait:ms=>{phase('Pause quota Groq','Reprise dans '+Math.round(ms/1000)+' s — limite de jetons par minute.')}}));
+            {role:'user',content:chunkPrompt(lots-1,estLots,transcriptForAI(cs),isCours)}
+          ],{maxTokens:1800,signal:ctl.signal,onWait:ms=>{phase('Pause quota Groq','Reprise dans '+Math.round(ms/1000)+' s…')}}));
         }catch(e){
-          if(e&&e.tpmTooLarge&&chunkWords>700){
-            chunkWords=Math.max(700,Math.floor(chunkWords/2));
-            idx=start;
+          if(e&&e.tpmTooLarge&&chunkWords>600){
+            chunkWords=Math.max(600,Math.floor(chunkWords/2));
+            idx=start;lots--;
             toast('Lot trop volumineux pour le quota — réduction à '+chunkWords+' mots par lot.','info',3200);
             continue;
           }
           throw e;
         }
-                digest+='Lot '+lots+'\nRésumé : '+(r.resume||'')+'\nPoints : '+(r.points||[]).slice(0,6).join(' | ')+'\nExemples : '+(r.exemples||[]).slice(0,4).join(' | ')+'\nDonnées : '+(r.chiffres||[]).slice(0,4).join(' | ')+'\nNotions : '+(r.notions||[]).map(n=>(n.terme||'')+' — '+(n.definition||'')+' ('+(n.depuis||'')+')').join(' ; ')+'\n\n';
-        if(idx<SEGS.length){
-          phase('Régulation du quota','Pause de 35 s entre les lots (jetons par minute)…');
-          await wait(35000);
-          if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
-        }
+        digest+='Lot '+lots+'\nRésumé : '+(r.resume||'')+'\nPoints : '+(r.points||[]).slice(0,6).join(' | ')+'\nExemples : '+(r.exemples||[]).slice(0,4).join(' | ')+'\nDonnées : '+(r.chiffres||[]).slice(0,4).join(' | ')+'\nNotions : '+(r.notions||[]).map(n=>(n.terme||'')+' — '+(n.definition||'')+' ('+(n.depuis||'')+')').join(' ; ')+'\n\n';
       }
-      if(digest){
-        phase('Régulation du quota','Pause avant la rédaction finale…');
-        await wait(35000);
-        if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
+      /* Condensé de second niveau si les notes sont devenues trop volumineuses */
+      if(digest&&wordCount(digest)>3200){
+        phase('Condensation','Regroupement des notes avant rédaction finale…');
+        await waitForTokens(Math.round(wordCount(digest)*1.7)+2500,ms=>phase('Régulation du quota','Reprise dans '+Math.round(ms/1000)+' s…'),ctl.signal);
+        try{
+          const r2=extractJSON(await aiChat([
+            {role:'system',content:sys},
+            {role:'user',content:'Voici des notes préparatoires horodatées, issues d\'une longue transcription :\n---\n'+digest+'---\nFusionne-les par thème, sans rien perdre d\'essentiel ni altérer les horodatages. Réponds en JSON : {"notes":"notes fusionnées, thématiques, horodatages [mm:ss] conservés"}'}
+          ],{maxTokens:5000,signal:ctl.signal}));
+          if(r2&&r2.notes&&String(r2.notes).length>400)digest=String(r2.notes);
+        }catch(e){if(e&&e.name==='AbortError')throw e}
       }
     }
+    prog(0.75);
+    const need=Math.round(wordCount(digest||transcriptForAI(sess.segments))*1.7)+(isCours?12000:6000);
+    await waitForTokens(need,ms=>phase('Régulation du quota','Reprise dans '+Math.round(ms/1000)+' s…'),ctl.signal);
     phase('Rédaction du résumé',digest?'Assemblage des lots et rédaction finale…':'Le modèle structure et reformule le document…');
     const out=await aiChat([
       {role:'system',content:sys},
       {role:'user',content:mainPrompt(sess,digest)}
-    ],{maxTokens:isCours?5000:3000,signal:ctl.signal,onWait:ms=>{phase('Pause quota Groq','Reprise dans '+Math.round(ms/1000)+' s…')}});
+    ],{maxTokens:isCours?12000:6000,signal:ctl.signal,onWait:ms=>{phase('Pause quota Groq','Reprise dans '+Math.round(ms/1000)+' s…')}});
     const D=extractJSON(out);
     if(!D||(!D.vue_densemble&&!(D.sections||[]).length&&!(D.points_cles||[]).length&&!(D.objectifs_pedagogiques||[]).length))
       throw new Error('réponse du modèle inexploitable');
+    prog(1);
     phase('Mise en forme','');
     sess.aiModel=AI.model;
     sess.docHTML=buildAIDocHTML(D,sess);
-    await dbPut('sessions',sess);
+    await saveSession(sess);
     clearInterval(tm);
-    composerHide();
-    releaseWakeLock();
+    composerHide();stopKeepAlive();releaseWakeLock();
     renderDocBody(sess);
     show('doc');
+    refreshHome();
     toast('Résumé IA rédigé — cliquez les horodatages pour vérifier à l\u2019audio.','ok',3600);
     return true;
   }catch(e){
     clearInterval(tm);
-    composerHide();
-    releaseWakeLock();
+    composerHide();stopKeepAlive();releaseWakeLock();
     if(e&&e.name==='AbortError'){toast('Rédaction interrompue — l\u2019analyse locale reste disponible (menu ⋯).','info');return false}
     if(e&&e.tpmTooLarge){
-      toast('Le résumé dépasse le quota de jetons du modèle '+AI.model+' — réessayez dans quelques minutes, ou réduisez la durée ciblée.','warn',7000);
+      toast('Le résumé dépasse le quota de jetons du modèle '+AI.model+' — réessayez dans quelques minutes ou choisissez un autre modèle.','warn',7000);
     }else{
       toast('Rédaction IA impossible : '+(e&&e.message?e.message:'erreur inconnue'),'warn',5200);
     }
@@ -1272,7 +1407,7 @@ async function runAIDraft(sess){
   }
 }
 
-/* ==================== COMPOSITEUR ==================== */
+/* ==================== COMPOSITEUR (ANALYSE LOCALE) ==================== */
 let _composerGen=0;
 function composerShow(){_composerGen++;const c=$('#composer');c.hidden=false;c.classList.remove('leaving')}
 function composerHide(){const g=++_composerGen;const c=$('#composer');c.classList.add('leaving');setTimeout(()=>{if(g===_composerGen)c.hidden=true},350)}
@@ -1298,97 +1433,62 @@ async function composeAndShow(s){
     const li=$(`.c-step[data-i="${i}"]`);li.classList.add('active');
     const t0=performance.now();
     steps[i][1](P);
-    await wait(Math.max(130,520-(performance.now()-t0)));
+    await wait(Math.max(120,420-(performance.now()-t0)));
     li.classList.remove('active');li.classList.add('done');
     li.querySelector('.c-mark').innerHTML=icon('check',14);
     ring.style.strokeDashoffset=(C*(1-(i+1)/steps.length)).toFixed(1);
   }
-  await wait(380);
+  await wait(320);
   s.docHTML=buildDocHTML(P,s);
-  await dbPut('sessions',s);
+  await saveSession(s);
   composerHide();
   renderDocBody(s);
   show('doc');
+  refreshHome();
 }
 
-/* ==================== TRANSCRIPTION WHISPER VIA GROQ ==================== */
-const GROQ_URL='https://api.groq.com/openai/v1/audio/transcriptions';
-const MAX_UPLOAD=24*1024*1024;
-const GROQ_MIMES=/^(audio\/(flac|mp3|mp4|mpeg|mpga|m4a|ogg|wav|webm|x-m4a|x-wav))$/i;
-const GROQ_MIME_FOR={mp3:'audio/mp3',m4a:'audio/m4a',mp4:'audio/mp4',ogg:'audio/ogg',wav:'audio/wav',flac:'audio/flac',webm:'audio/webm'};
-async function setupAudioSource(sess){
-  const audio=$('#audio-el');
-  if(state.audioUrl){URL.revokeObjectURL(state.audioUrl);state.audioUrl=null}
-  const a=await dbGet('audio',sess.id);
-  state.audioBlob=null;state.audioParts=[];
-  if(a&&a.blob){
-    state.audioBlob=a.blob;
-    state.audioUrl=URL.createObjectURL(a.blob);
-    audio.src=state.audioUrl;
-    $('#player').hidden=false;$('#view-doc').classList.remove('no-audio');
-  }else if(a&&a.multi&&a.multi.length){
-    state.audioParts=a.multi.map(m=>({name:m.name,url:URL.createObjectURL(m.blob),durMs:m.durMs||0}));
-    state.audioPartIdx=0;
-    audio.src=state.audioParts[0].url;
-    audio.addEventListener('ended',playNextPart);
-    $('#player').hidden=false;$('#view-doc').classList.remove('no-audio');
-    /* durée totale */
-    fixDuration();
-  }else{
-    audio.removeAttribute('src');audio.load();
-    $('#player').hidden=true;$('#view-doc').classList.add('no-audio');
-  }
-}
-function playNextPart(){
-  const audio=$('#audio-el');
-  if(!state.audioParts||!state.current)return;
-  const next=state.audioPartIdx+1;
-  if(next<state.audioParts.length){
-    state.audioPartIdx=next;
-    audio.src=state.audioParts[next].url;
-    audio.play().catch(()=>{});
-  }else{
-    audio.removeEventListener('ended',playNextPart);
-    $('#pl-play').innerHTML=icon('play',20);
-  }
-}
-async function resolveAudioBlob(sess){
-  if(state.current&&state.current.id===sess.id){
-    if(state.audioBlob)return state.audioBlob;
-    if(state.audioParts&&state.audioParts.length){
-      /* transcription : chaque morceau séparément (voir runApiTranscription) */
-      return null;
-    }
-  }
-  const a=await dbGet('audio',sess.id);
-  if(a&&a.blob)return a.blob;
-  return null;
-}
-/* Récupère les morceaux d'une session (blob unique = 1 morceau) */
-async function resolveAudioParts(sess){
-  const a=await dbGet('audio',sess.id);
-  if(!a)return [];
-  if(a.blob)return [{blob:a.blob,offsetMs:0}];
-  if(a.multi)return a.multi.map(m=>({blob:m.blob,offsetMs:0}));
-  return [];
-}
-function blobExt(blob,fallback){
-  const t=String(blob.type||'').toLowerCase();
+/* ==================== OUTILS AUDIO ==================== */
+const UPLOAD_MAX=24*1024*1024;                 /* limite Groq (25 Mo) avec marge */
+const SEND_EXT=/^(flac|mp3|m4a|mp4|ogg|wav|webm)$/;
+const MIME_FOR={mp3:'audio/mpeg',m4a:'audio/m4a',mp4:'audio/mp4',ogg:'audio/ogg',wav:'audio/wav',flac:'audio/flac',webm:'audio/webm'};
+/* Extension d'envoi : type MIME d'abord, puis nom de fichier, puis extension
+   de session. L'ancien code ne regardait que le type MIME : un .m4a importé
+   sans type partait en décodage complet (et faisait planter l'onglet). */
+function extFor(blob,name,fallback){
+  const t=String(blob&&blob.type||'').split(';')[0].trim().toLowerCase();
   if(/x-m4a|m4a|mp4|aac/.test(t))return 'm4a';
   if(/ogg|oga|opus/.test(t))return 'ogg';
   if(/wav/.test(t))return 'wav';
   if(/mpeg|mp3/.test(t))return 'mp3';
   if(/flac/.test(t))return 'flac';
   if(/webm/.test(t))return 'webm';
-  if(fallback&&/^(mp3|m4a|aac|mp4|ogg|oga|opus|wav|flac|webm)$/.test(fallback)){
-    if(fallback==='oga'||fallback==='opus')return 'ogg';
-    if(fallback==='aac'||fallback==='mp4')return 'm4a';
-    return fallback;
-  }
-  return 'webm';
+  const m=/\.([a-z0-9]+)$/i.exec(name||'');
+  let e=(m?m[1]:String(fallback||'')).toLowerCase();
+  if(e==='oga'||e==='opus')e='ogg';
+  if(e==='aac')e='m4a';
+  if(e==='mpga'||e==='mpeg')e='mp3';
+  return SEND_EXT.test(e)?e:'';
 }
-/* Décodage mémoire-sobre : directement en 16 kHz (un 1 h 30 à 48 kHz
-   atteignait ~1,9 Go et plantait l'onglet sur mobile). */
+const blobExt=(blob,fallback)=>extFor(blob,'',fallback)||'webm';
+function audioDuration(blob){
+  return new Promise(res=>{
+    const url=URL.createObjectURL(blob);
+    const a=new Audio();let done=false;
+    const fin=v=>{if(done)return;done=true;try{URL.revokeObjectURL(url)}catch(e){}res(isFinite(v)&&v>0?Math.round(v):0)};
+    a.preload='metadata';
+    a.onloadedmetadata=()=>{
+      if(isFinite(a.duration)&&a.duration>0)return fin(a.duration*1000);
+      /* Durée inconnue (fichiers MediaRecorder) : on force son calcul. */
+      a.ondurationchange=()=>{if(isFinite(a.duration)&&a.duration>0)fin(a.duration*1000)};
+      try{a.currentTime=1e7}catch(e){fin(0)}
+    };
+    a.onerror=()=>fin(0);
+    a.src=url;
+    setTimeout(()=>fin(a.duration*1000),5000);
+  });
+}
+/* Décodage mémoire-sobre : directement en 16 kHz (uniquement pour les
+   formats non découpables en octets — dernier recours). */
 async function decodeAudio16k(blob){
   const ab=await blob.arrayBuffer();
   const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
@@ -1444,111 +1544,170 @@ function encodeWav(f32,sr){
   for(let i=0;i<f32.length;i++,o+=2){const s=Math.max(-1,Math.min(1,f32[i]));v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true)}
   return new Blob([buf],{type:'audio/wav'});
 }
-/* MP3 volumineux : décodage tranche par tranche — seule une tranche
-   réside en mémoire au lieu du fichier entier. */
-/* Découpage universel : décodage par fenêtres temporelles de ~8 min.
-   Mémoire de pointe ~20 Mo au lieu du fichier entier — indispensable
-   sur iPhone où un décodage complet d'un enregistrement long fait
-   expulser l'onglet. Fonctionne pour tous formats lisibles. */
-async function windowSliceParts(blob,durMs,onPart){
-  const WIN=Math.min(8*60*1000,Math.max(60000,durMs||0));
-  const parts=[];
-  const AC=window.AudioContext||window.webkitAudioContext;
-  for(let off=0;off<(durMs||WIN);off+=WIN){
-    const ctx=new AC();
-    try{
-      const ab=await blob.arrayBuffer();
-      /* décodage complet UNE fois par fenêtre n'est PAS possible sans
-         re-décoder : on décode donc par fenêtre via OfflineAudioContext
-         avec start/end, en ne gardant qu'une fenêtre en mémoire. */
-      const full=await ctx.decodeAudioData(ab);
-      const rate=full.sampleRate;
-      const s=Math.floor(off/1000*rate),e=Math.min(full.length,Math.floor((off+WIN)/1000*rate));
-      const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
-      const off1=new OAC(1,e-s,rate);
-      const src=off1.createBufferSource();
-      /* sous-buffer : copie uniquement de la fenêtre */
-      const win=off1.createBuffer(1,e-s,rate);
-      const srcData=full.getChannelData(0);
-      const dstData=win.getChannelData(0);
-      for(let i=s;i<e;i++)dstData[i-s]=srcData[i]||0;
-      src.buffer=win;
-      src.connect(off1.destination);
-      src.start(0);
-      const rendered=await off1.startRendering();
-      parts.push({blob:encodeWav(rendered.getChannelData(0),rate),ext:'wav',offsetMs:off});
-    }finally{
-      try{ctx.close()}catch(e){}
+
+/* ===== DÉCOUPAGE SANS DÉCODAGE =====
+   MP3 : un flux de trames. On coupe sur une frontière de trame et on envoie
+   la tranche telle quelle. Coût mémoire ≈ 0, aucune perte de qualité.
+   WAV : coupe sur frontière d'échantillon avec en-tête reconstruit.
+   Les autres conteneurs (m4a, webm, ogg) nécessitent un décodage : ils ne
+   sont atteints que pour un import volumineux, jamais pour un enregistrement
+   fait dans l'application (qui naît déjà découpé). */
+async function mp3FrameStart(blob,pos){
+  if(pos>=blob.size)return blob.size;
+  const buf=new Uint8Array(await blob.slice(pos,Math.min(blob.size,pos+16384)).arrayBuffer());
+  for(let i=0;i<buf.length-3;i++){
+    if(buf[i]===0xFF&&(buf[i+1]&0xE0)===0xE0&&((buf[i+1]>>3)&3)!==1&&((buf[i+1]>>1)&3)!==0)return pos+i;
+  }
+  return pos;
+}
+async function mp3Units(blob,maxBytes){
+  const units=[];let pos=0;
+  while(pos<blob.size){
+    const target=Math.min(blob.size,pos+maxBytes);
+    let cut=target>=blob.size?blob.size:await mp3FrameStart(blob,target);
+    if(cut<=pos)cut=target;
+    units.push({blob:blob.slice(pos,cut,'audio/mpeg'),ext:'mp3'});
+    pos=cut;
+  }
+  return units;
+}
+async function wavUnits(blob,maxBytes){
+  const head=new DataView(await blob.slice(0,8192).arrayBuffer());
+  const rd=o=>String.fromCharCode(head.getUint8(o),head.getUint8(o+1),head.getUint8(o+2),head.getUint8(o+3));
+  if(head.byteLength<44||rd(0)!=='RIFF'||rd(8)!=='WAVE')return [{blob,ext:'wav'}];
+  let o=12,fmt=null,dataOff=0,dataLen=0;
+  while(o+8<head.byteLength){
+    const id=rd(o),sz=head.getUint32(o+4,true);
+    if(id==='fmt ')fmt={ch:head.getUint16(o+10,true),rate:head.getUint32(o+12,true),bits:head.getUint16(o+22,true)};
+    if(id==='data'){dataOff=o+8;dataLen=sz&&sz<=blob.size-o-8?sz:(blob.size-o-8);break}
+    o+=8+sz+(sz&1);
+  }
+  if(!fmt||!dataOff||!fmt.ch||!fmt.bits)return [{blob,ext:'wav'}];
+  const frame=fmt.ch*fmt.bits/8;
+  const per=Math.max(frame,Math.floor((maxBytes-44)/frame)*frame);
+  const units=[];
+  for(let p=0;p<dataLen;p+=per){
+    const len=Math.min(per,dataLen-p);
+    const h=new ArrayBuffer(44),v=new DataView(h);
+    const ws=(x,s)=>{for(let i=0;i<s.length;i++)v.setUint8(x+i,s.charCodeAt(i))};
+    ws(0,'RIFF');v.setUint32(4,36+len,true);ws(8,'WAVE');ws(12,'fmt ');
+    v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,fmt.ch,true);
+    v.setUint32(24,fmt.rate,true);v.setUint32(28,fmt.rate*frame,true);
+    v.setUint16(32,frame,true);v.setUint16(34,fmt.bits,true);
+    ws(36,'data');v.setUint32(40,len,true);
+    units.push({blob:new Blob([h,blob.slice(dataOff+p,dataOff+p+len)],{type:'audio/wav'}),ext:'wav'});
+  }
+  return units;
+}
+async function decodeUnits(blob,maxBytes,onPhase){
+  const durMs=await audioDuration(blob);
+  const pcm=Math.round((durMs/1000)*16000*2);
+  if(durMs&&pcm>180*1024*1024)
+    throw new Error('fichier trop long pour être découpé sur cet appareil ('+Math.round(durMs/60000)+' min). Convertissez-le en MP3 — le découpage devient alors instantané.');
+  if(onPhase)onPhase('Décodage du fichier','Ce format ne peut pas être découpé sans décodage — gardez l\u2019écran allumé…');
+  const d=await decodeAudio16k(blob);
+  const rate=d.rate||16000;
+  const per=Math.floor((maxBytes-44)/2);
+  const units=[];
+  for(let o=0;o<d.len;o+=per){
+    const end=Math.min(o+per,d.len);
+    units.push({blob:encodeWav(monoSlice(d,o,end),rate),ext:'wav'});
+    if(onPhase)onPhase('Découpage',units.length+' morceau'+(units.length>1?'x':'')+' préparé'+(units.length>1?'s':'')+'…');
+  }
+  d.chans.length=0;
+  return units;
+}
+async function resolveAudioParts(sess){
+  const a=await dbGet('audio',sess.id);
+  if(!a)return [];
+  if(a.blob)return [{blob:a.blob,name:sess.title,durMs:a.durMs||sess.durationMs||0}];
+  if(a.multi)return a.multi.filter(m=>m&&m.blob&&m.blob.size).map(m=>({blob:m.blob,name:m.name,durMs:m.durMs||0}));
+  return [];
+}
+/* Plan d'envoi déterministe : une reprise retombe sur exactement la même liste. */
+async function buildUnits(sess,onPhase){
+  const src=await resolveAudioParts(sess);
+  const units=[];
+  for(const p of src){
+    const ext=extFor(p.blob,p.name,sess.audioExt);
+    if(p.blob.size<=UPLOAD_MAX&&SEND_EXT.test(ext)){units.push({blob:p.blob,ext});continue}
+    if(ext==='mp3'){units.push(...await mp3Units(p.blob,UPLOAD_MAX));continue}
+    if(ext==='wav'){units.push(...await wavUnits(p.blob,UPLOAD_MAX));continue}
+    units.push(...await decodeUnits(p.blob,UPLOAD_MAX,onPhase));
+  }
+  return units;
+}
+
+/* ==================== TRANSCRIPTION WHISPER VIA GROQ ==================== */
+/* fetch n'expose pas la progression d'envoi : XHR permet d'afficher les %. */
+function xhrPost(url,fd,headers,{onProgress,signal,timeout=20*60*1000}={}){
+  return new Promise((res,rej)=>{
+    const x=new XMLHttpRequest();
+    x.open('POST',url);
+    Object.keys(headers||{}).forEach(k=>x.setRequestHeader(k,headers[k]));
+    x.timeout=timeout;
+    if(x.upload&&onProgress)x.upload.onprogress=e=>{if(e.lengthComputable)onProgress(e.loaded/e.total)};
+    x.onload=()=>res({ok:x.status>=200&&x.status<300,status:x.status,body:x.responseText,header:n=>x.getResponseHeader(n)});
+    x.onerror=()=>rej(new Error('connexion impossible — vérifiez le réseau'));
+    x.ontimeout=()=>rej(new Error('délai dépassé — réseau trop lent pour ce morceau'));
+    if(signal){
+      if(signal.aborted){try{x.abort()}catch(e){}return rej(new DOMException('annulé','AbortError'))}
+      signal.addEventListener('abort',()=>{try{x.abort()}catch(e){}rej(new DOMException('annulé','AbortError'))},{once:true});
     }
-    if(onPart)onPart(parts.length);
-  }
-  return parts;
+    x.send(fd);
+  });
 }
-/* ===== Découpage mémoire-sobre =====
-   mp3SliceParts : tranches d'octets d'un MP3 (flux tolérant aux coupures),
-   chaque tranche décodée séparément — ~30 Mo en mémoire au lieu du fichier
-   entier. Était référencée mais absente après consolidation : c'est la
-   cause du « mp3SliceParts is not defined ». */
-async function mp3SliceParts(blob,onPart){
-  const SLICE=4*1024*1024;
-  const parts=[];let off=0,acc=0;
-  while(off<blob.size){
-    const end=Math.min(off+SLICE,blob.size);
-    const d=await decodeAudio16k(blob.slice(off,end));
-    const rate=d.rate||16000;
-    parts.push({blob:encodeWav(monoSlice(d,0,d.len),rate),ext:'wav',offsetMs:Math.round(acc/rate*1000)});
-    acc+=d.len;off=end;
-    if(onPart)onPart(parts.length);
-  }
-  return parts;
-}
-async function groqPostPart(part,key,sess,signal,onPhase,model){
+async function groqPostUnit(unit,key,sess,signal,onPhase,model){
   for(let attempt=0;;attempt++){
     const fd=new FormData();
-    const fname='audio.'+part.ext;
-    const ftype=GROQ_MIME_FOR[part.ext]||String(part.blob.type||'').split(';')[0]||'audio/webm';
-    try{fd.append('file',new File([part.blob],fname,{type:ftype}))}
-    catch(e){fd.append('file',part.blob,fname)}
+    const type=MIME_FOR[unit.ext]||'audio/webm';
+    try{fd.append('file',new File([unit.blob],'audio.'+unit.ext,{type}))}
+    catch(e){fd.append('file',unit.blob,'audio.'+unit.ext)}
     fd.append('model',model||CFG.model);
     fd.append('response_format','verbose_json');
     if(CFG.lang!=='auto')fd.append('language',CFG.lang);
     fd.append('temperature','0');
     if(sess&&sess.title)fd.append('prompt',sess.title.slice(0,220));
-    let res;
-    try{res=await fetch(GROQ_URL,{method:'POST',headers:{Authorization:'Bearer '+key},body:fd,signal})}
-    catch(e){if(e.name==='AbortError')throw e;throw new Error('connexion impossible — vérifiez le réseau')}
-    if(res.ok){
-      const data=await res.json();
-      const out=(data.segments||[]).map(s=>({
-        start:Math.round((s.start||0)*1000)+part.offsetMs,
-        end:Math.round((s.end||0)*1000)+part.offsetMs,
-        text:String(s.text||'').trim()
-      })).filter(s=>s.text);
-      if(!out.length&&data.text&&data.text.trim())
-        out.push({start:part.offsetMs,end:part.offsetMs+Math.round((data.duration||0)*1000),text:data.text.trim()});
-      return out;
+    let r;
+    try{
+      r=await xhrPost(GROQ_URL,fd,{Authorization:'Bearer '+key},{
+        signal,onProgress:p=>onPhase&&onPhase(null,'Envoi '+Math.round(p*100)+' %'+(p>=1?' — transcription en cours…':''))});
+    }catch(e){
+      if(e&&e.name==='AbortError')throw e;
+      if(attempt<2){if(onPhase)onPhase(null,'Réseau instable — nouvelle tentative…');await wait(4000);continue}
+      throw e;
     }
-    if(res.status===401||res.status===403)
-      throw new Error('clé refusée ('+res.status+') — vérifiez la clé dans les réglages');
-    if(res.status===429){
-      const ra=+(res.headers.get('retry-after')||'');
-      const waitMs=isNaN(ra)?20000:Math.min(Math.max(ra,10),60)*1000;
+    if(r.ok){
+      let data={};
+      try{data=JSON.parse(r.body)}catch(e){throw new Error('réponse illisible de Groq')}
+      const segs=(data.segments||[]).map(s=>({
+        start:Math.round((s.start||0)*1000),
+        end:Math.round((s.end||0)*1000),
+        text:String(s.text||'').trim()})).filter(s=>s.text);
+      if(!segs.length&&data.text&&String(data.text).trim())
+        segs.push({start:0,end:Math.round((data.duration||0)*1000),text:String(data.text).trim()});
+      let durMs=Math.round((data.duration||0)*1000);
+      if(!durMs&&segs.length)durMs=segs[segs.length-1].end;
+      return {segs,durMs};
+    }
+    if(r.status===401||r.status===403)
+      throw new Error('clé refusée ('+r.status+') — vérifiez la clé dans les réglages');
+    if(r.status===429){
+      const ra=+(r.header('retry-after')||'');
+      const ms=isNaN(ra)?20000:Math.min(Math.max(ra,10),60)*1000;
       if(attempt<3){
-        if(onPhase)onPhase('Quota Groq sollicité','Nouvelle tentative dans '+Math.round(waitMs/1000)+' s…');
-        await wait(waitMs);continue;
+        if(onPhase)onPhase('Quota Groq sollicité','Nouvelle tentative dans '+Math.round(ms/1000)+' s…');
+        await wait(ms);continue;
       }
       let msg='limite de débit Groq atteinte';
-      try{const j=await res.json();if(j&&j.error&&j.error.message)msg=j.error.message}catch(e){}
-      const err=new Error(msg);err.rateLimited=true;
-      err.retryInMs=isNaN(ra)?600000:ra*1000;
-      throw err;
+      try{const j=JSON.parse(r.body);if(j&&j.error&&j.error.message)msg=j.error.message}catch(e){}
+      const err=new Error(msg);err.rateLimited=true;err.retryInMs=isNaN(ra)?600000:ra*1000;throw err;
     }
-    if(res.status>=500&&attempt<2){
-      if(onPhase)onPhase('Serveur occupé','Nouvelle tentative…');
-      await wait(3000);continue;
+    if(r.status>=500&&attempt<2){
+      if(onPhase)onPhase('Serveur occupé','Nouvelle tentative…');await wait(3000);continue;
     }
-    let msg='erreur '+res.status;
-    try{const j=await res.json();if(j&&j.error&&j.error.message)msg=j.error.message}catch(e){}
+    let msg='erreur '+r.status;
+    try{const j=JSON.parse(r.body);if(j&&j.error&&j.error.message)msg=j.error.message}catch(e){}
     throw new Error(msg);
   }
 }
@@ -1558,200 +1717,87 @@ async function testGroqKey(key){
   if(r.status===401||r.status===403)return {ok:false,reason:'Clé refusée — vérifiez qu\u2019elle est complète et active.'};
   return {ok:false,reason:'Serveur inaccessible (erreur '+r.status+').'};
 }
-function endSafe(dec,o,chunkSamples){return Math.min(o+chunkSamples,dec.len)}
 async function runApiTranscription(sess){
   const key=CFG.key;
   if(!key){toast('Configurez d\u2019abord votre clé Groq dans les réglages.','warn');state.pending=sess;openSettings();return false}
-  const allParts=await resolveAudioParts(sess);
-  if(!allParts.length){toast('Aucun audio disponible pour cet enregistrement.','warn');return false}
   composerShow();
   $('#composer-title').textContent='Transcription Whisper';
   $('#composer-sub').textContent=sess.title;
   $('#ring-fg').style.strokeDashoffset=326.7;
   $('#ring-core').innerHTML=`<span class="spin">${icon('refresh',30)}</span>`;
-  $('#composer-note').textContent='L\u2019audio est envoyé à Groq morceau par morceau ; la progression est sauvegardée après chacun.';
+  $('#composer-note').textContent='Chaque morceau est envoyé puis sauvegardé : une coupure ne fait perdre que le morceau en cours.';
   $('#composer-body').innerHTML=`
     <div class="ai-stat">
       <p class="ai-phase" id="api-phase">Préparation</p>
-      <p class="ai-detail" id="api-detail">Chargement de l\u2019audio (${(allParts.reduce((a,p)=>a+p.blob.size,0)/1048576).toFixed(1)} Mo en ${allParts.length} morceau${allParts.length>1?'x':''})…</p>
+      <p class="ai-detail" id="api-detail">Analyse de l\u2019audio…</p>
+      <div class="ai-bar"><i id="api-bar"></i></div>
       <p class="ai-elapsed" id="api-elapsed">00:00</p>
       <button class="btn-skipc ai-cancel" id="api-cancel">Annuler</button>
     </div>`;
   const ctl=new AbortController();
   $('#api-cancel').onclick=()=>ctl.abort();
+  const phase=(a,b)=>{const p=$('#api-phase'),d=$('#api-detail');if(p&&a)p.textContent=a;if(d&&b!=null)d.textContent=b};
+  const prog=r=>{const b=$('#api-bar');if(b)b.style.width=Math.max(0,Math.min(100,r*100)).toFixed(1)+'%';
+    $('#ring-fg').style.strokeDashoffset=(326.7*(1-Math.max(0,Math.min(1,r)))).toFixed(1)};
   let timer=null;
-  grabWakeLock();
+  grabWakeLock();startKeepAlive(sess.title);
   try{
-    /* ===== Construction des envois : chaque morceau ≤ 24 Mo en format
-       accepté part tel quel (jamais de décodage du fichier entier —
-       la cause des plantages iPhone sur les enregistrements longs).
-       Les morceaux hors critères sont découpés par tranche mémoire-sobre. ===== */
-    const sendable=p=>p.blob.size<=MAX_UPLOAD&&GROQ_MIMES.test(String(p.blob.type||'').split(';')[0].trim().toLowerCase());
-    let parts=[];
-    let startPart=0;const priorSegs=[];
+    const units=await buildUnits(sess,phase);
+    if(!units.length)throw new Error('aucun audio disponible pour cet enregistrement');
+    let start=0,offset=0;const segs=[];
     const pr=sess.trProgress;
-    if(pr&&pr.segs&&pr.segs.length&&pr.totalParts>1){
-      const go=await confirmDialog({title:'Reprendre la transcription ?',body:pr.doneParts+' / '+pr.totalParts+' morceaux déjà transmis. Reprendre à '+(pr.doneParts+1)+' ?',ok:'Reprendre',cancel:'Recommencer'});
-      if(go){startPart=Math.min(pr.doneParts,pr.totalParts-1);priorSegs.push(...pr.segs)}
-      else delete sess.trProgress;
-    }else if(pr)delete sess.trProgress;
-    if(!pr||!pr.segs||startPart===0){
-      /* --- préparation fraîche des envois --- */
-      if(allParts.every(sendable)){
-        let acc=0;
-        for(const p of allParts){
-          const d=await audioDuration(p.blob);
-          parts.push({blob:p.blob,ext:blobExt(p.blob),offsetMs:acc});
-          acc+=d||0;
-        }
-      }else{
-        for(const p of allParts){
-          if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
-          const mime=String(p.blob.type||'').split(';')[0].trim().toLowerCase();
-          const ext=String(sess.audioExt||'').toLowerCase();
-          if(sendable(p)){
-            const d=await audioDuration(p.blob);
-            parts.push({blob:p.blob,ext:blobExt(p.blob,sess.audioExt),offsetMs:parts.reduce((a,x)=>a+0,0)&&0||0});
-            /* décalage calculé après coup, voir ci-dessous */
-            parts[parts.length-1].offsetMs=0;
-            parts.push({blob:p.blob,ext:blobExt(p.blob,sess.audioExt),offsetMs:0});
-            parts.pop();
-            parts[parts.length-1]._durMs=d;
-          }else if(/mpeg|mp3/.test(mime)||ext==='mp3'){
-            /* MP3 volumineux : tranches d'octets (frontières sûres) */
-            $('#api-phase').textContent='Découpage du MP3';
-            const SLICE=4*1024*1024;
-            let off=0;
-            const sub=[];
-            while(off<p.blob.size){
-              const end=Math.min(off+SLICE,p.blob.size);
-              const d=await decodeAudio16k(p.blob.slice(off,end));
-              const rate=d.rate||16000;
-              sub.push({blob:encodeWav(monoSlice(d,0,d.len),rate),ext:'wav'});
-              off=end;
-              $('#api-detail').textContent='Tranche '+(sub.length)+' décodée…';
-            }
-            sub.forEach(sp=>{sp._durMs=0;parts.push(sp)});
-            parts.push({_endOfMp3:true,_durMs:await audioDuration(p.blob)});
-            parts.pop();
-            /* marqueur de fin pour le calcul des décalages */
-            parts.push({_mp3Whole:p.blob,_durMs:await audioDuration(p.blob),_isMp3:true});
-            const dFull=await audioDuration(p.blob);
-            sub.forEach((sp,i)=>{
-              sp.offsetMs=Math.round(dFull*i/sub.length);
-            });
-            parts=parts.filter(x=>!x._endOfMp3&&!x._mp3Whole);
-            sub.forEach(sp=>parts.push(sp));
-          }else{
-            /* webm / m4a / autre : fenêtres temporelles mémoire-sobres */
-            $('#api-phase').textContent='Décodage d\u2019un morceau volumineux';
-            $('#api-detail').textContent='Fenêtres de 20 Mo — gardez l\u2019écran allumé…';
-            const dec=await decodeAudio16k(p.blob);
-            const rate=dec.rate||16000;
-            const chunkSamples=Math.floor(20*1024*1024/2);
-            for(let o=0;o<dec.len;o+=chunkSamples){
-              const end=Math.min(o+chunkSamples,dec.len);
-              parts.push({blob:encodeWav(monoSlice(dec,o,end),rate),ext:'wav',offsetMs:Math.round(o/rate*1000)});
-            }
-          }
-        }
-      }
-      /* --- calcul des décalages temporels cumulés --- */
-      let acc=0;
-      for(const p of parts){
-        if(p.offsetMs==null){
-          const d=p._durMs||await audioDuration(p.blob);
-          p.offsetMs=acc;
-          acc+=d||0;
-        }else{
-          acc=Math.max(acc,p.offsetMs+(p._durMs||await audioDuration(p.blob)||0));
-        }
-      }
-    }else{
-      /* reprise : reconstruire la même liste d'envois */
-      if(allParts.every(sendable)){
-        let acc=0;
-        for(const p of allParts){
-          const d=await audioDuration(p.blob);
-          parts.push({blob:p.blob,ext:blobExt(p.blob),offsetMs:acc});
-          acc+=d||0;
-        }
-      }else{
-        for(const p of allParts){
-          const mime=String(p.blob.type||'').split(';')[0].trim().toLowerCase();
-          const ext=String(sess.audioExt||'').toLowerCase();
-          if(sendable(p)){
-            parts.push({blob:p.blob,ext:blobExt(p.blob,sess.audioExt),offsetMs:0,_durMs:await audioDuration(p.blob)});
-          }else if(/mpeg|mp3/.test(mime)||ext==='mp3'){
-            const SLICE=4*1024*1024;
-            let off=0;const sub=[];
-            while(off<p.blob.size){
-              const end=Math.min(off+SLICE,p.blob.size);
-              const d=await decodeAudio16k(p.blob.slice(off,end));
-              sub.push({blob:encodeWav(monoSlice(d,0,d.len),d.rate||16000),ext:'wav'});
-              off=end;
-            }
-            const dFull=await audioDuration(p.blob);
-            sub.forEach((sp,i)=>{sp.offsetMs=Math.round(dFull*i/sub.length);parts.push(sp)});
-          }else{
-            const dec=await decodeAudio16k(p.blob);
-            const rate=dec.rate||16000;
-            const chunkSamples=Math.floor(20*1024*1024/2);
-            for(let o=0;o<dec.len;o+=chunkSamples){
-              parts.push({blob:encodeWav(monoSlice(dec,o,endSafe(dec,o,chunkSamples)),rate),ext:'wav',offsetMs:Math.round(o/rate*1000)});
-            }
-          }
-        }
-      }
+    if(pr&&pr.segs&&pr.segs.length&&pr.totalUnits===units.length&&pr.doneUnits<units.length){
+      const go=await confirmDialog({title:'Reprendre la transcription ?',
+        body:pr.doneUnits+' / '+pr.totalUnits+' morceaux déjà transmis. Reprendre au morceau '+(pr.doneUnits+1)+' ?',
+        ok:'Reprendre',cancel:'Recommencer'});
+      if(go){start=pr.doneUnits;offset=pr.offset||0;segs.push(...pr.segs)}
     }
-    const totalParts=Math.max(1,parts.length);
+    if(!start)delete sess.trProgress;
     const t0=performance.now();
     timer=setInterval(()=>{const el=$('#api-elapsed');if(el)el.textContent=fmtClock(performance.now()-t0)},500);
-    const segs=[...priorSegs];
-    let curModel=CFG.model;
-    const triedModels=new Set([curModel]);
-    for(let i=startPart;i<totalParts;i++){
+    let model=CFG.model;const tried=new Set([model]);
+    for(let i=start;i<units.length;i++){
       if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
-      const base=totalParts>1?('Morceau '+(i+1)+'/'+totalParts+' — '):'';
-      const part=parts[i];
-      $('#api-phase').textContent=base+'Envoi de l\u2019audio';
-      $('#api-detail').textContent='Whisper '+(curModel.includes('turbo')?'turbo':'large-v3')+' · '+(part.blob.size/1048576).toFixed(1)+' Mo'+(totalParts>1?' · ['+fmtClock(part.offsetMs||0)+']':'');
-      let rs;
+      const u=units[i];
+      const base=units.length>1?('Morceau '+(i+1)+'/'+units.length):'Transcription';
+      prog(i/units.length);
+      phase(base,'Whisper '+(model.includes('turbo')?'turbo':'large-v3')+' · '+fmtMo(u.blob.size)+(units.length>1?' · départ '+fmtClock(offset):''));
+      let r;
       try{
-        rs=await groqPostPart(part,key,sess,ctl.signal,(label,detail)=>{
-          const p=$('#api-phase'),d=$('#api-detail');if(p)p.textContent=label;if(d)d.textContent=detail;
-        },curModel);
+        r=await groqPostUnit(u,key,sess,ctl.signal,(a,b)=>phase(a||base,b),model);
       }catch(e){
         if(e&&e.rateLimited){
-          const alt=curModel.includes('turbo')?'whisper-large-v3':'whisper-large-v3-turbo';
-          if(!triedModels.has(alt)){
-            triedModels.add(alt);
-            toast('Quota « '+curModel+' » atteint — bascule sur « '+alt+' » (quota séparé).','info',3600);
-            curModel=alt;i--;continue;
+          const alt=model.includes('turbo')?'whisper-large-v3':'whisper-large-v3-turbo';
+          if(!tried.has(alt)){
+            tried.add(alt);model=alt;i--;
+            toast('Quota atteint — bascule sur « '+alt+' » (quota séparé).','info',3600);continue;
           }
-          if(segs.length&&totalParts>1){sess.trProgress={doneParts:i,totalParts,segs};await dbPut('sessions',sess)}
+          if(segs.length){sess.trProgress={doneUnits:i,totalUnits:units.length,offset,segs};try{await dbPut('sessions',sess)}catch(e2){}}
           const mins=Math.max(1,Math.round((e.retryInMs||600000)/60000));
-          throw new Error('quota horaire Groq atteint. '+(segs.length?('Progression sauvegardée ('+i+'/'+totalParts+') — relancez dans ~'+mins+' min, la reprise repartira du morceau '+(i+1)+'.'):'Réessayez dans ~'+mins+' min.'));
+          throw new Error('quota horaire Groq atteint. '+(segs.length?('Progression sauvegardée ('+i+'/'+units.length+') — relancez dans ~'+mins+' min, la reprise repartira du morceau '+(i+1)+'.'):('Réessayez dans ~'+mins+' min.')));
         }
         throw e;
       }
-      segs.push(...rs);
-      if(totalParts>1){sess.trProgress={doneParts:i+1,totalParts,segs};await dbPut('sessions',sess)}
+      for(const s of r.segs)segs.push({start:s.start+offset,end:s.end+offset,text:s.text});
+      offset+=r.durMs||0;
+      units[i].blob=null;                       /* libère la mémoire au fil de l'eau */
+      sess.trProgress={doneUnits:i+1,totalUnits:units.length,offset,segs};
+      try{await dbPut('sessions',sess)}catch(e){storageError(e)}
     }
     clearInterval(timer);timer=null;
     if(!segs.length)throw new Error('aucune parole détectée dans l\u2019enregistrement');
     delete sess.trProgress;
     sess.segments=segs;
-    await dbPut('sessions',sess);
-    composerHide();
-    releaseWakeLock();
+    if(offset>0&&Math.abs(offset-(sess.durationMs||0))>5000)sess.durationMs=offset;
+    await saveSession(sess);
+    prog(1);
+    composerHide();stopKeepAlive();releaseWakeLock();
     toast('Transcription terminée — '+wordCount(segs.map(s=>s.text).join(' '))+' mots.','ok',3200);
     return true;
   }catch(e){
     if(timer)clearInterval(timer);
-    composerHide();
-    releaseWakeLock();
-    if(e&&e.name==='AbortError'){toast('Transcription annulée.','info');return false}
+    composerHide();stopKeepAlive();releaseWakeLock();
+    if(e&&e.name==='AbortError'){toast('Transcription annulée — la progression est conservée.','info');return false}
     toast('Transcription : '+(e&&e.message?e.message:'erreur inconnue'),'warn',8000);
     return false;
   }
@@ -1778,8 +1824,8 @@ async function loadTransformers(){
   throw lastErr||new Error('import impossible');
 }
 async function runLocalTranscription(sess){
-  const blob=await resolveAudioBlob(sess);
-  if(!blob){toast('Aucun audio disponible pour cet enregistrement.','warn');return false}
+  const rows=await resolveAudioParts(sess);
+  if(!rows.length){toast('Aucun audio disponible pour cet enregistrement.','warn');return false}
   if(sess.durationMs>25*60000){
     const ok=await confirmDialog({title:'Enregistrement long',body:'La transcription locale peut prendre plusieurs dizaines de minutes sur un téléphone. Préférez Whisper (API) si possible. Continuer ?',ok:'Continuer',cancel:'Annuler'});
     if(!ok)return false;
@@ -1798,6 +1844,7 @@ async function runLocalTranscription(sess){
     </div>`;
   let cancelled=false,tick=null;
   $('#loc-cancel').onclick=()=>{cancelled=true};
+  grabWakeLock();
   try{
     const files=new Map();let lastPct=-1;
     const onProg=p=>{
@@ -1821,54 +1868,55 @@ async function runLocalTranscription(sess){
         return await _tf.pipeline('automatic-speech-recognition','Xenova/whisper-tiny',{quantized:true,progress_callback:onProg});
       }
     })();
-    if(cancelled){composerHide();return false}
-    $('#loc-phase').textContent='Décodage de l\u2019audio';
-    $('#loc-detail').textContent='Extraction de la piste sonore…';
-    const f32=await blobToMono16k(blob);
-    if(cancelled){composerHide();return false}
-    $('#loc-phase').textContent='Transcription en cours';
+    if(cancelled){composerHide();releaseWakeLock();return false}
     $('#loc-cancel').style.display='none';
     const t0=performance.now();
     tick=setInterval(()=>{
       const de=$('#loc-detail');if(!de)return;
       de.textContent='En cours depuis '+fmtClock(performance.now()-t0)+' — durée de l\u2019audio : '+fmtClock(sess.durationMs)+'.';
     },500);
-    const out=await asr(f32,{language:'french',task:'transcribe',chunk_length_s:30,stride_length_s:5,return_timestamps:true});
-    clearInterval(tick);tick=null;
-    const raw=(out&&Array.isArray(out.chunks)&&out.chunks.length)?out.chunks:[{timestamp:[0,null],text:(out&&out.text)||''}];
-    const segs=[];
-    for(let i=0;i<raw.length;i++){
-      const c=raw[i];const text=(c.text||'').trim();if(!text)continue;
-      const ts=c.timestamp||[];
-      const t0s=ts[0]!=null?ts[0]:0;
-      let t1s=ts[1]!=null?ts[1]:((raw[i+1]&&raw[i+1].timestamp&&raw[i+1].timestamp[0]!=null)?raw[i+1].timestamp[0]:t0s+4);
-      if(t1s<=t0s)t1s=t0s+2;
-      segs.push({start:Math.round(t0s*1000),end:Math.round(t1s*1000),text});
+    const segs=[];let off=0;
+    for(let pi=0;pi<rows.length;pi++){
+      if(cancelled)break;
+      $('#loc-phase').textContent=rows.length>1?('Transcription — morceau '+(pi+1)+'/'+rows.length):'Transcription en cours';
+      const f32=await blobToMono16k(rows[pi].blob);
+      const out=await asr(f32,{language:'french',task:'transcribe',chunk_length_s:30,stride_length_s:5,return_timestamps:true});
+      const raw=(out&&Array.isArray(out.chunks)&&out.chunks.length)?out.chunks:[{timestamp:[0,null],text:(out&&out.text)||''}];
+      for(let i=0;i<raw.length;i++){
+        const c=raw[i];const text=(c.text||'').trim();if(!text)continue;
+        const ts=c.timestamp||[];
+        const t0s=ts[0]!=null?ts[0]:0;
+        let t1s=ts[1]!=null?ts[1]:((raw[i+1]&&raw[i+1].timestamp&&raw[i+1].timestamp[0]!=null)?raw[i+1].timestamp[0]:t0s+4);
+        if(t1s<=t0s)t1s=t0s+2;
+        segs.push({start:Math.round(t0s*1000)+off,end:Math.round(t1s*1000)+off,text});
+      }
+      off+=rows[pi].durMs||Math.round(f32.length/16000*1000);
     }
+    clearInterval(tick);tick=null;
     if(!segs.length)throw new Error('aucune parole détectée');
     sess.segments=segs;
-    await dbPut('sessions',sess);
-    composerHide();
+    await saveSession(sess);
+    composerHide();releaseWakeLock();
     toast('Transcription terminée — '+wordCount(segs.map(s=>s.text).join(' '))+' mots.','ok',3200);
     return true;
   }catch(e){
     if(tick)clearInterval(tick);
-    composerHide();
+    composerHide();releaseWakeLock();
     toast('Transcription locale impossible ('+(e&&e.message?e.message:'erreur')+'). Le premier chargement du modèle nécessite une connexion.','warn',5000);
     return false;
   }
 }
 
 /* ==================== CHOIX APRÈS ENREGISTREMENT ==================== */
-function askPostRecord(sess,hasAudio){
+function askPostRecord(sess,hasRec){
   return new Promise(res=>{
     composerShow();
     $('#composer-title').textContent='Enregistrement terminé';
     $('#composer-sub').textContent=sess.title;
     $('#ring-core').innerHTML=icon('mic',30);
     $('#ring-fg').style.strokeDashoffset=0;
-    $('#composer-note').textContent='L\u2019audio est intact et prêt à être transcrit.';
-    if(!hasAudio){
+    $('#composer-note').textContent='L\u2019audio est enregistré sur l\u2019appareil et prêt à être transcrit.';
+    if(!hasRec){
       $('#composer-body').innerHTML=`
         <p class="c-desc">Aucun audio n\u2019a pu être enregistré sur cet appareil. Vous pourrez saisir ou coller une transcription manuellement depuis le document.</p>
         <div class="c-btns"><button class="btn-skipc" id="c-skip">Continuer</button></div>`;
@@ -1876,8 +1924,9 @@ function askPostRecord(sess,hasAudio){
       return;
     }
     const hasKey=!!CFG.key;
+    const nb=(sess.parts||[]).length;
     $('#composer-body').innerHTML=`
-      <p class="c-desc">${esc(fmtDurLong(sess.durationMs))} d\u2019audio prêtes à être transcrites.</p>
+      <p class="c-desc">${esc(fmtDurLong(sess.durationMs))} d\u2019audio${nb>1?(' en '+nb+' morceaux'):''} prêtes à être transcrites.</p>
       <div class="c-btns">
         ${hasKey?`
         <button class="btn-ai" id="c-api"><span style="display:inline-flex;align-items:center;gap:8px">${icon('cloud',18)}Transcrire avec Whisper</span><small>puis résumé IA automatique</small></button>
@@ -1897,23 +1946,6 @@ function askPostRecord(sess,hasAudio){
 }
 
 /* ==================== IMPORT D'UN AUDIO ==================== */
-function extOf(file){
-  const m=/\.([a-z0-9]+)$/i.exec(file.name||'');
-  if(m)return m[1].toLowerCase();
-  return blobExt(file);
-}
-function audioDuration(blob){
-  return new Promise(res=>{
-    const url=URL.createObjectURL(blob);
-    const a=new Audio();
-    const done=v=>{URL.revokeObjectURL(url);res(isFinite(v)&&v>0?Math.round(v):0)};
-    a.preload='metadata';
-    a.onloadedmetadata=()=>done(a.duration*1000);
-    a.onerror=()=>done(0);
-    a.src=url;
-    setTimeout(()=>done(a.duration&&isFinite(a.duration)?a.duration*1000:0),10000);
-  });
-}
 function askImportDetails(defTitle){
   return new Promise(res=>{
     const root=$('#modal-root');
@@ -1949,8 +1981,7 @@ function askImportDetails(defTitle){
 }
 async function importAudioFiles(files){
   if(!files.length)return;
-  if(files.some(f=>f.size>600*1024*1024)){toast('Un fichier dépasse ~600 Mo.','warn');return}
-  /* Trier par nom : partie1, partie2… dans l'ordre */
+  if(files.some(f=>f.size>800*1024*1024)){toast('Un fichier dépasse ~800 Mo.','warn');return}
   files=[...files].sort((a,b)=>String(a.name).localeCompare(String(b.name),'fr',{numeric:true}));
   const first=files[0];
   const rawName=(first.name||'').replace(/\.[^.]+$/,'').replace(/[_\-]?\d+$/,'').replace(/[_\-]+/g,' ').trim();
@@ -1960,13 +1991,17 @@ async function importAudioFiles(files){
   const durs=[];
   for(const f of files)durs.push(await audioDuration(f));
   const totalMs=durs.reduce((a,b)=>a+b,0);
-  const sess={id:uid(),title:det.title,type:det.type,createdAt:Date.now(),durationMs:totalMs,segments:[],marks:[],docHTML:null,audioExt:extOf(first),imported:true,parts:files.map((f,i)=>({name:f.name,size:f.size,durMs:durs[i]||0}))};
-  /* Audio : un seul blob si 1 fichier, sinon structure multi */
-  if(files.length===1){await dbPut('audio',{id:sess.id,blob:files[0]})}
-  else{await dbPut('audio',{id:sess.id,multi:files.map(f=>({name:f.name,blob:f}))})}
+  const id=uid();
+  const sess={id,title:det.title,type:det.type,createdAt:Date.now(),durationMs:totalMs,segments:[],marks:[],
+    docHTML:null,audioExt:extFor(first,first.name,'')||'mp3',imported:true,
+    parts:files.map((f,i)=>({name:f.name,size:f.size,durMs:durs[i]||0}))};
+  try{
+    if(files.length===1)await dbPut('audio',{id,blob:files[0],durMs:durs[0]||0});
+    else await dbPut('audio',{id,multi:files.map((f,i)=>({name:f.name,blob:f,durMs:durs[i]||0}))});
+    await saveSession(sess);
+  }catch(e){storageError(e);return}
   state.current=sess;
   await setupAudioSource(sess);
-  await dbPut('sessions',sess);
   resetPlayerUI();
   await refreshHome();
   toast(files.length>1?(files.length+' parties importées — un seul document sera produit.'):'Audio importé dans la bibliothèque.','ok');
@@ -1978,22 +2013,21 @@ async function importAudioFiles(files){
   if(go){
     const done=await runApiTranscription(sess);
     if(done){
-      if(AI.ready){const ok=await runAIDraft(sess);if(!ok)await composeAndShow(sess);}
+      if(AI.ready){const ok=await runAIDraft(sess);if(!ok)await composeAndShow(sess)}
       else await composeAndShow(sess);
     }else await composeAndShow(sess);
   }else await composeAndShow(sess);
 }
 
-
 /* ==================== RENDU DU DOCUMENT ==================== */
 function dumpRaw(segs){return segs.map(x=>`[${fmtClock(x.start)}] ${x.text}`).join('\n\n')}
 function renderDocBody(s){
   const b=$('#doc-body');
-  b.innerHTML=s.docHTML;
+  b.innerHTML=s.docHTML||'';
   b.contentEditable='false';state.editing=false;
   $('#view-doc').classList.remove('editing');
   $('#btn-edit').innerHTML=icon('pen',15)+'<span>Éditer</span>';
-  $('#cta-transcribe').hidden=!!(s.segments&&s.segments.length)||!state.audioBlob;
+  $('#cta-transcribe').hidden=!!(s.segments&&s.segments.length)||!hasAudio();
   $$('#doc-body .sec').forEach(sec=>{
     if(sec.querySelector('.sec-tools'))return;
     const tools=document.createElement('div');
@@ -2001,10 +2035,13 @@ function renderDocBody(s){
     tools.innerHTML=`<button class="add-note">${icon('plus',14)} Ajouter une précision</button>`;
     sec.appendChild(tools);
   });
+  /* transcription courte : on la déplie et on la remplit tout de suite */
+  const d=b.querySelector('.tr-lazy');
+  if(d&&s.segments&&s.segments.length&&s.segments.length<=250){d.open=true;fillLazy(b,s.segments)}
   $$('#doc-body .doc-head, #doc-body .sec').forEach((el,i)=>{
-    el.style.setProperty('--i',i);el.classList.remove('reveal');void el.offsetWidth;el.classList.add('reveal');
+    el.style.setProperty('--i',Math.min(i,10));el.classList.remove('reveal');void el.offsetWidth;el.classList.add('reveal');
   });
-  $('#raw-text').value=dumpRaw(s.segments);
+  $('#raw-text').value=dumpRaw(s.segments||[]);
 }
 async function openDoc(id){
   const s=await dbGet('sessions',id);
@@ -2013,17 +2050,113 @@ async function openDoc(id){
   await setupAudioSource(s);
   resetPlayerUI();
   if(!s.docHTML){await composeAndShow(s)}else{renderDocBody(s);show('doc')}
-  refreshHome();
-}
-function resetPlayerUI(){
-  const audio=$('#audio-el');
-  $('#pl-cur').textContent='00:00';$('#pl-fill').style.width='0%';
-  $('#pl-play').innerHTML=icon('play',20);
-  audio.playbackRate=1;$('#pl-speed').textContent='1×';
-  $('#pl-dur').textContent='00:00';
 }
 
-/* ==================== ENREGISTREMENT ==================== */
+/* ==================== CHRONOLOGIE AUDIO (MULTI-MORCEAUX) ==================== */
+const AUD={parts:[],idx:0,total:0};
+function hasAudio(){return AUD.parts.length>0}
+function releaseAudio(){
+  AUD.parts.forEach(p=>{try{URL.revokeObjectURL(p.url)}catch(e){}});
+  AUD.parts=[];AUD.idx=0;AUD.total=0;
+}
+async function setupAudioSource(sess){
+  const a=$('#audio-el');
+  try{a.pause()}catch(e){}
+  releaseAudio();
+  const rows=sess?await resolveAudioParts(sess):[];
+  if(!rows.length){
+    a.removeAttribute('src');a.load();
+    $('#player').hidden=true;$('#view-doc').classList.add('no-audio');
+    return;
+  }
+  let off=0;
+  for(const r of rows){
+    let d=r.durMs||0;
+    if(!d&&rows.length>1)d=await audioDuration(r.blob);      /* anciennes sessions */
+    AUD.parts.push({url:URL.createObjectURL(r.blob),blob:r.blob,durMs:d,offsetMs:off});
+    off+=d;
+  }
+  AUD.total=off||sess.durationMs||0;
+  AUD.idx=0;a.src=AUD.parts[0].url;
+  $('#player').hidden=false;$('#view-doc').classList.remove('no-audio');
+  $('#pl-dur').textContent=fmtClock(AUD.total);
+}
+function globalMs(){
+  const a=$('#audio-el'),p=AUD.parts[AUD.idx];
+  return p?p.offsetMs+(a.currentTime||0)*1000:0;
+}
+function seekGlobal(ms,play){
+  if(!AUD.parts.length)return;
+  ms=Math.max(0,Math.min(ms,Math.max(0,(AUD.total||0)-200)));
+  let i=0;
+  while(i<AUD.parts.length-1&&ms>=AUD.parts[i].offsetMs+(AUD.parts[i].durMs||1e12))i++;
+  const a=$('#audio-el'),local=Math.max(0,(ms-AUD.parts[i].offsetMs)/1000);
+  let done=false;
+  const apply=()=>{
+    if(done)return;done=true;
+    try{a.currentTime=local}catch(e){}
+    if(play){const p=a.play();if(p&&p.catch)p.catch(()=>{})}
+  };
+  if(i!==AUD.idx||!a.src){
+    AUD.idx=i;a.src=AUD.parts[i].url;
+    a.addEventListener('loadedmetadata',apply,{once:true});
+    a.addEventListener('canplay',apply,{once:true});
+    setTimeout(apply,1500);                    /* filet si l'événement manque */
+    a.load();
+  }else apply();
+}
+function resetPlayerUI(){
+  const a=$('#audio-el');
+  $('#pl-cur').textContent='00:00';$('#pl-fill').style.width='0%';
+  $('#pl-play').innerHTML=icon('play',20);
+  a.playbackRate=1;$('#pl-speed').textContent='1×';
+  $('#pl-dur').textContent=fmtClock(AUD.total||0);
+}
+function wirePlayer(){
+  const a=$('#audio-el');
+  a.addEventListener('loadedmetadata',()=>{
+    const p=AUD.parts[AUD.idx];
+    if(p&&!p.durMs&&isFinite(a.duration)&&a.duration>0){
+      p.durMs=Math.round(a.duration*1000);
+      let off=0;AUD.parts.forEach(x=>{x.offsetMs=off;off+=x.durMs||0});
+      AUD.total=Math.max(AUD.total,off);
+      $('#pl-dur').textContent=fmtClock(AUD.total);
+    }
+  });
+  a.addEventListener('timeupdate',()=>{
+    const g=globalMs();
+    $('#pl-cur').textContent=fmtClock(g);
+    if(AUD.total>0)$('#pl-fill').style.width=Math.min(100,g/AUD.total*100).toFixed(2)+'%';
+  });
+  a.addEventListener('play',()=>{$('#pl-play').innerHTML=icon('pause',20)});
+  a.addEventListener('pause',()=>{$('#pl-play').innerHTML=icon('play',20)});
+  a.addEventListener('ended',()=>{
+    if(AUD.idx<AUD.parts.length-1){
+      AUD.idx++;a.src=AUD.parts[AUD.idx].url;
+      a.addEventListener('loadedmetadata',()=>a.play().catch(()=>{}),{once:true});
+      a.load();
+    }else $('#pl-play').innerHTML=icon('play',20);
+  });
+  $('#pl-play').addEventListener('click',()=>{
+    if(!hasAudio()){toast('Aucun audio disponible.','warn');return}
+    if(a.paused)a.play().catch(()=>{});else a.pause();
+  });
+  $('#pl-bar').addEventListener('click',e=>{
+    if(!AUD.total)return;
+    const r=e.currentTarget.getBoundingClientRect();
+    seekGlobal(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*AUD.total,!a.paused);
+  });
+  const speeds=[1,1.25,1.5,2];let si=0;
+  $('#pl-speed').addEventListener('click',()=>{
+    si=(si+1)%speeds.length;a.playbackRate=speeds[si];
+    $('#pl-speed').textContent=String(speeds[si]).replace('.',',')+'×';
+  });
+}
+
+/* ==================== ENREGISTREMENT SEGMENTÉ ==================== */
+const SEG_MS=5*60*1000;
+let draftQ=Promise.resolve();
+const queueDraft=fn=>(draftQ=draftQ.then(fn).catch(e=>console.warn('draft',e)));
 function pickMime(){
   if(!window.MediaRecorder)return null;
   for(const m of ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/aac']){
@@ -2032,72 +2165,88 @@ function pickMime(){
   return '';
 }
 function nowMs(){return rec?rec.accum+(rec.activeStart!=null?performance.now()-rec.activeStart:0):0}
-
-/* Notification média (écran de verrouillage) */
-let bgAudio=null,bgUrl=null;
-function startKeepAlive(title){
+function makeRecorder(stream,mime,onData){
+  const base=mime?{mimeType:mime}:{};
+  let mr;
+  try{mr=new MediaRecorder(stream,Object.assign({},base,{audioBitsPerSecond:CFG.bps}))}
+  catch(e){mr=new MediaRecorder(stream,mime?base:undefined)}
+  mr.ondataavailable=e=>{if(e.data&&e.data.size)onData(e.data)};
+  return mr;
+}
+function openPart(atMs){
+  const part={idx:rec.parts.length,chunks:[],startMs:atMs,durMs:0,mime:rec.mime||'audio/webm',saved:false,closed:false};
+  rec.parts.push(part);
+  part.mr=makeRecorder(rec.stream,rec.mime,d=>part.chunks.push(d));
+  part.mr.start(1000);
+  updatePartsUI();
+  return part;
+}
+/* Ferme un morceau : on attend son dernier bloc AVANT de toucher au micro. */
+async function closePart(part,atMs,persist){
+  if(part.closed)return;
+  part.closed=true;
+  part.durMs=Math.max(0,Math.round(atMs-part.startMs));
+  const mr=part.mr;
+  if(mr&&mr.state!=='inactive'){
+    await new Promise(r=>{
+      let done=false;const fin=()=>{if(!done){done=true;r()}};
+      mr.addEventListener('stop',fin,{once:true});
+      setTimeout(fin,4000);
+      try{mr.stop()}catch(e){fin()}
+    });
+  }
+  part.blob=new Blob(part.chunks,{type:part.mime});
+  part.chunks.length=0;                      /* libère la RAM immédiatement */
+  part.mr=null;
+  if(persist!==false)await saveDraftPart(part);
+  updatePartsUI();
+}
+/* Sauvegarde incrémentale : un plantage ne coûte que le morceau en cours. */
+async function saveDraftPart(part){
+  if(part.saved||!part.blob||!part.blob.size||!rec)return;
   try{
-    const sr=8000,n=sr*4,f=new Float32Array(n);
-    for(let i=0;i<n;i++)f[i]=Math.sin(i*2*Math.PI*55)*0.00003;
-    bgUrl=URL.createObjectURL(encodeWav(f,sr));
-    bgAudio=new Audio(bgUrl);
-    bgAudio.loop=true;
-    bgAudio.play().catch(()=>{});
-    if('mediaSession' in navigator){
-      try{navigator.mediaSession.metadata=new MediaMetadata({title:'Enregistrement en cours',artist:title,album:'Écho'})}catch(e){}
-    }
-  }catch(e){bgAudio=null}
+    await dbPut('audio',{id:'draft:'+String(part.idx).padStart(3,'0'),draft:true,idx:part.idx,
+      blob:part.blob,durMs:part.durMs,mime:part.mime});
+    await dbPut('audio',{id:'draft:meta',draft:true,title:rec.title,type:rec.type,mime:rec.mime,
+      startedAt:rec.startedAt,marks:rec.marks.slice(),updatedAt:Date.now()});
+    part.saved=true;
+  }catch(e){storageError(e)}
 }
-function stopKeepAlive(){
-  try{if(bgAudio){bgAudio.pause();bgAudio.removeAttribute('src');bgAudio=null}}catch(e){}
-  if(bgUrl){URL.revokeObjectURL(bgUrl);bgUrl=null}
-  if('mediaSession' in navigator){try{navigator.mediaSession.metadata=null}catch(e){}}
+async function clearDraft(){
+  try{
+    const keys=(await dbKeys('audio')).filter(k=>String(k).indexOf('draft:')===0);
+    for(const k of keys)await dbDel('audio',k);
+  }catch(e){}
 }
-
-/* Écran toujours allumé (Wake Lock) */
-let wl=null;
-async function grabWakeLock(){try{wl=await (navigator.wakeLock&&navigator.wakeLock.request('screen'))}catch(e){}}
-function releaseWakeLock(){try{wl&&wl.release()}catch(e){}wl=null}
-
-/* Écran noir de veille après 30 s d'inactivité */
-const DIM_DELAY=30000;
-let dimTimer=null;
-function dimShow(){
+function updatePartsUI(){
+  const el=$('#rec-parts');if(!el)return;
+  if(!rec){el.textContent='';return}
+  const n=rec.parts.length;
+  const done=rec.parts.filter(p=>p.saved).length;
+  el.textContent=n>1?('Morceau '+n+' en cours · '+done+' déjà sauvegardé'+(done>1?'s':'')):'Sauvegarde automatique toutes les 5 min';
+}
+function rotatePart(){
   if(!rec||rec.status!=='recording')return;
-  $('#dim').classList.add('on');
-  $('#dim-timer').textContent=fmtClock(nowMs());
+  const t=nowMs(),old=rec.parts[rec.parts.length-1];
+  try{openPart(t)}catch(e){return}
+  queueDraft(()=>closePart(old,t,true));
 }
-function dimArm(){
-  clearTimeout(dimTimer);dimTimer=null;
-  if(!rec||rec.status!=='recording')return;
-  dimTimer=setTimeout(dimShow,DIM_DELAY);
-}
-function dimOff(){
-  clearTimeout(dimTimer);dimTimer=null;
-  $('#dim').classList.remove('on');
-}
-function wireDim(){
-  $('#dim').addEventListener('click',()=>{dimOff();dimArm()});
-  ['pointerdown','touchstart','mousedown','keydown'].forEach(ev=>
-    document.addEventListener(ev,()=>{
-      if(!rec||rec.status!=='recording')return;
-      if($('#dim').classList.contains('on'))dimOff();
-      dimArm();
-    },{passive:true}));
-}
-
 async function startSession(){
   const btn=$('#btn-start');if(btn.disabled)return;btn.disabled=true;
   const title=$('#rec-title').value.trim()||('Enregistrement — '+new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}).format(new Date()));
   const type=state.newType;
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast('Le micro n\u2019est pas accessible depuis ce navigateur.','warn');btn.disabled=false;return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder){
+    toast('Le micro n\u2019est pas accessible depuis ce navigateur.','warn');btn.disabled=false;return;
+  }
   let stream;
-  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}
-  catch(e){toast('Accès au micro refusé — autorisez-le dans les réglages du navigateur.','warn');btn.disabled=false;return}
-  const mime=pickMime();
-  rec={status:'recording',stream,title,type,mime,chunks:[],marks:[],
-       accum:0,activeStart:performance.now(),hist:[],level:0,wave:$('#wave'),
-       wasHidden:false,lastFrame:performance.now(),segTimer:null};
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
+  catch(e){
+    try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}
+    catch(e2){toast('Accès au micro refusé — autorisez-le dans les réglages du navigateur.','warn');btn.disabled=false;return}
+  }
+  rec={status:'recording',stream,title,type,mime:pickMime(),parts:[],marks:[],
+       accum:0,activeStart:performance.now(),startedAt:Date.now(),
+       hist:[],level:0,wave:$('#wave'),wasHidden:false,lastFrame:performance.now(),segTimer:null};
   try{
     rec.ctx=new (window.AudioContext||window.webkitAudioContext)();
     if(rec.ctx.state==='suspended')rec.ctx.resume();
@@ -2105,34 +2254,27 @@ async function startSession(){
     rec.buf=new Uint8Array(rec.analyser.fftSize);
     rec.ctx.createMediaStreamSource(stream).connect(rec.analyser);
   }catch(e){rec.analyser=null}
-  if(window.MediaRecorder){
-    rec.mr=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
-    rec.mr.ondataavailable=e=>{if(e.data&&e.data.size)rec.chunks.push(e.data)};
-    rec.mr.start(1000);
-  }else rec.mr=null;
-  /* ===== NOUVEAU : segmentation iOS =====
-     Toutes les 10 minutes, on arrête le recorder en cours et on en
-     relance un neuf sur le même micro. Chaque segment est un fichier
-     webm complet d'environ 8-12 Mo : la transcription pourra les
-     envoyer tels quels, sans jamais décoder l'audio en mémoire
-     (c'est ce décodage qui faisait planter Safari sur les longs
-     enregistrements). L'enregistrement n'est PAS interrompue :
-     le flux micro reste ouvert en continu. */
-  if(/iPhone|iPad|iPod/i.test(navigator.userAgent)&&rec.mr){
-    rec.segTimer=setInterval(()=>{
-      if(!rec||rec.status!=='recording'||!rec.mr)return;
-      try{
-        const old=rec.mr;
-        const m=pickMime();
-        rec.mr=new MediaRecorder(rec.stream,m?{mimeType:m}:undefined);
-        rec.mr.ondataavailable=e=>{if(e.data&&e.data.size)rec.chunks.push(e.data)};
-        old.ondataavailable=null;
-        old.stop();
-        rec.mr.start(1000);
-      }catch(e){}
-    },10*60*1000);
+  try{openPart(0)}
+  catch(e){
+    toast('Impossible de démarrer l\u2019enregistreur audio.','warn');
+    try{stream.getTracks().forEach(t=>t.stop())}catch(e2){}
+    rec=null;btn.disabled=false;return;
   }
-  /* ===== FIN NOUVEAU ===== */
+  /* Rotation pilotée par le temps d'audio réel (la pause fige nowMs()). */
+  rec.segTimer=setInterval(()=>{
+    if(!rec||rec.status!=='recording')return;
+    const cur=rec.parts[rec.parts.length-1];
+    if(cur&&!cur.closed&&nowMs()-cur.startMs>=SEG_MS)rotatePart();
+  },10000);
+  /* Interruptions système (appel entrant, changement de périphérique). */
+  try{
+    const tr=stream.getAudioTracks()[0];
+    if(tr){
+      tr.onmute=()=>toast('Micro interrompu (appel ?) — le compteur continue.','warn',5000);
+      tr.onunmute=()=>toast('Micro rétabli.','ok',2000);
+      tr.onended=()=>{toast('Le micro a été coupé par le système — arrêt et sauvegarde.','warn',6000);finalize()};
+    }
+  }catch(e){}
   $('#rec-name').textContent=title;
   $('#rec-type-badge').textContent=TYPE_LABEL[type].toUpperCase();
   $('#rec-timer').textContent='00:00';
@@ -2140,11 +2282,9 @@ async function startSession(){
   setStateUI(false);
   show('rec');vibrate(12);
   requestAnimationFrame(()=>{fitCanvas()});
-  frame();
-  grabWakeLock();
-  startKeepAlive(title);
+  frame();grabWakeLock();startKeepAlive(title);
   dimOff();dimArm();
-  toast('Enregistrement démarré — écran noir automatique après 30 s.','info',3000);
+  toast('Enregistrement démarré — sauvegarde automatique toutes les 5 minutes.','info',3200);
   btn.disabled=false;
 }
 function setStateUI(paused){
@@ -2197,13 +2337,14 @@ function drawWave(){
 }
 function setPause(p){
   if(!rec||rec.status==='stopped')return;
+  const cur=rec.parts[rec.parts.length-1];
   if(p){
-    if(rec.mr&&rec.mr.state==='recording')rec.mr.pause();
+    try{if(cur&&cur.mr&&cur.mr.state==='recording')cur.mr.pause()}catch(e){}
     rec.status='paused';
     rec.accum+=performance.now()-rec.activeStart;rec.activeStart=null;
     dimOff();
   }else{
-    if(rec.mr&&rec.mr.state==='paused')rec.mr.resume();
+    try{if(cur&&cur.mr&&cur.mr.state==='paused')cur.mr.resume()}catch(e){}
     rec.status='recording';rec.activeStart=performance.now();
     dimArm();
   }
@@ -2215,39 +2356,37 @@ async function finalize(){
   rec.status='stopped';
   $('#btn-pause').disabled=true;$('#btn-stop').disabled=true;$('#btn-mark').disabled=true;
   cancelAnimationFrame(rec.raf);
-  /* NOUVEAU : arrête la relance automatique des segments */
   clearInterval(rec.segTimer);
-  const mr=rec.mr,ctx=rec.ctx;
-  try{if(ctx){const p=ctx.close();if(p&&p.catch)p.catch(()=>{})}}catch(e){}
-  rec.stream.getTracks().forEach(t=>t.stop());
-  stopKeepAlive();
-  dimOff();
-  releaseWakeLock();
-  const {title,type,mime}=rec;
-  const chunks=rec.chunks,marks=rec.marks;
+  const cur=rec.parts[rec.parts.length-1];
+  if(cur&&!cur.closed)await closePart(cur,dur,false);     /* 1) recorder d'abord */
+  await draftQ;                                            /* 2) écritures en attente */
+  try{rec.stream.getTracks().forEach(t=>t.stop())}catch(e){}  /* 3) micro ensuite */
+  try{if(rec.ctx){const p=rec.ctx.close();if(p&&p.catch)p.catch(()=>{})}}catch(e){}
+  stopKeepAlive();dimOff();releaseWakeLock();
+  const title=rec.title,type=rec.type,marks=rec.marks;
+  const parts=rec.parts.filter(p=>p.blob&&p.blob.size);
   rec=null;
-  let blob=null;
-  if(mr&&mr.state!=='inactive'){
-    await new Promise(r=>{mr.addEventListener('stop',r,{once:true});try{mr.stop()}catch(e){r()}});
+  updatePartsUI();
+  if(dur<1500||!parts.length){
+    await clearDraft();
+    toast('Enregistrement trop court — abandonné.','warn');show('home');return;
   }
-  if(chunks.length)blob=new Blob(chunks,{type:mime||'audio/webm'});
-  if(dur<1500){toast('Enregistrement trop court — abandonné.','warn');show('home');return}
-  const ext=blob?blobExt(blob):'webm';
-  const sess={id:uid(),title:title||'Enregistrement',type,createdAt:Date.now(),durationMs:dur,segments:[],marks,docHTML:null,audioExt:ext};
-  if(blob)await dbPut('audio',{id:sess.id,blob});
-  await dbPut('sessions',sess);
+  const id=uid();
+  const ext=blobExt(parts[0].blob);
+  const sess={id,title:title||'Enregistrement',type,createdAt:Date.now(),durationMs:dur,segments:[],marks,
+    docHTML:null,audioExt:ext,
+    parts:parts.map((p,i)=>({name:'partie-'+String(i+1).padStart(2,'0'),size:p.blob.size,durMs:p.durMs}))};
+  try{
+    if(parts.length===1)await dbPut('audio',{id,blob:parts[0].blob,durMs:parts[0].durMs});
+    else await dbPut('audio',{id,multi:parts.map((p,i)=>({name:'partie-'+String(i+1).padStart(2,'0'),blob:p.blob,durMs:p.durMs}))});
+    await saveSession(sess);
+  }catch(e){storageError(e);show('home');return}
+  await clearDraft();
   state.current=sess;
-  if(state.audioUrl){URL.revokeObjectURL(state.audioUrl);state.audioUrl=null}
-  if(blob){
-    state.audioBlob=blob;state.audioUrl=URL.createObjectURL(blob);
-    $('#audio-el').src=state.audioUrl;$('#player').hidden=false;$('#view-doc').classList.remove('no-audio');
-  }else{
-    state.audioBlob=null;$('#player').hidden=true;$('#view-doc').classList.add('no-audio');
-  }
+  await setupAudioSource(sess);
   resetPlayerUI();
   refreshHome();
-  let choice='proceed';
-  choice=await askPostRecord(sess,!!blob);
+  const choice=await askPostRecord(sess,true);
   if(choice==='settings'){state.pending=sess;openSettings();return}
   if(choice==='api'||choice==='api_only'){await runApiTranscription(sess)}
   else if(choice==='local'){await runLocalTranscription(sess)}
@@ -2258,36 +2397,125 @@ async function finalize(){
   }
   await composeAndShow(sess);
 }
-function discardRecording(){
+async function discardRecording(){
   if(!rec)return;
   rec.status='stopped';
   cancelAnimationFrame(rec.raf);
-  /* NOUVEAU : arrête la relance automatique des segments */
   clearInterval(rec.segTimer);
+  const cur=rec.parts[rec.parts.length-1];
+  try{if(cur&&cur.mr&&cur.mr.state!=='inactive')cur.mr.stop()}catch(e){}
+  try{rec.stream.getTracks().forEach(t=>t.stop())}catch(e){}
   try{if(rec.ctx)rec.ctx.close()}catch(e){}
-  try{if(rec.mr&&rec.mr.state!=='inactive')rec.mr.stop()}catch(e){}
-  rec.stream.getTracks().forEach(t=>t.stop());
-  stopKeepAlive();
-  dimOff();
-  releaseWakeLock();
-  rec=null;
+  stopKeepAlive();dimOff();releaseWakeLock();
+  rec=null;updatePartsUI();
+  await draftQ;
+  await clearDraft();
   show('home');
   toast('Enregistrement abandonné.','info');
 }
-document.addEventListener('visibilitychange',()=>{
-  if(!rec||rec.status==='stopped')return;
-  if(document.visibilityState==='visible'){
-    grabWakeLock();
-    fitCanvas();
-    if(performance.now()-(rec.lastFrame||0)>2500){cancelAnimationFrame(rec.raf);frame();}
-    if(rec.wasHidden){
-      rec.wasHidden=false;
-      toast('L\u2019enregistrement a continué — '+fmtClock(nowMs())+' au compteur.','info',3200);
+/* Récupération après fermeture ou plantage de l'onglet */
+async function recoverDraft(){
+  let keys=[];
+  try{keys=(await dbKeys('audio')).filter(k=>String(k).indexOf('draft:')===0)}catch(e){return}
+  const partKeys=keys.filter(k=>k!=='draft:meta').sort();
+  if(!partKeys.length){await clearDraft();return}
+  const parts=[];
+  for(const k of partKeys){const r=await dbGet('audio',k);if(r&&r.blob&&r.blob.size)parts.push(r)}
+  if(!parts.length){await clearDraft();return}
+  const meta=(await dbGet('audio','draft:meta'))||{};
+  const ms=parts.reduce((a,p)=>a+(p.durMs||0),0);
+  const ok=await confirmDialog({
+    title:'Enregistrement interrompu',
+    body:'Un enregistrement de '+fmtDurLong(ms)+' n\u2019a pas été finalisé (fermeture de l\u2019onglet ou manque de mémoire). Le récupérer ?',
+    ok:'Récupérer',cancel:'Supprimer'});
+  if(!ok){await clearDraft();return}
+  const id=uid();
+  const sess={id,title:meta.title||'Enregistrement récupéré',type:meta.type||'cours',
+    createdAt:meta.startedAt||Date.now(),durationMs:ms,segments:[],marks:meta.marks||[],
+    docHTML:null,audioExt:blobExt(parts[0].blob),
+    parts:parts.map((p,i)=>({name:'partie-'+String(i+1).padStart(2,'0'),size:p.blob.size,durMs:p.durMs}))};
+  try{
+    if(parts.length===1)await dbPut('audio',{id,blob:parts[0].blob,durMs:parts[0].durMs});
+    else await dbPut('audio',{id,multi:parts.map((p,i)=>({name:'partie-'+String(i+1).padStart(2,'0'),blob:p.blob,durMs:p.durMs}))});
+    await saveSession(sess);
+  }catch(e){storageError(e);return}
+  await clearDraft();
+  await refreshHome();
+  toast('Enregistrement récupéré — '+fmtDurLong(ms)+'.','ok',4200);
+}
+
+/* Notification média + maintien d'activité (écran éteint) */
+let bgAudio=null,bgUrl=null,bgUsers=0;
+function startKeepAlive(title){
+  bgUsers++;
+  if(bgAudio)return;
+  try{
+    const sr=8000,n=sr*4,f=new Float32Array(n);
+    for(let i=0;i<n;i++)f[i]=Math.sin(i*2*Math.PI*55)*0.00003;
+    bgUrl=URL.createObjectURL(encodeWav(f,sr));
+    bgAudio=new Audio(bgUrl);
+    bgAudio.loop=true;
+    bgAudio.play().catch(()=>{});
+    if('mediaSession' in navigator){
+      try{navigator.mediaSession.metadata=new MediaMetadata({title:'Écho — traitement en cours',artist:title||'',album:'Écho'})}catch(e){}
     }
-  }else{
-    rec.wasHidden=true;
+  }catch(e){bgAudio=null}
+}
+function stopKeepAlive(){
+  bgUsers=Math.max(0,bgUsers-1);
+  if(bgUsers>0)return;
+  try{if(bgAudio){bgAudio.pause();bgAudio.removeAttribute('src');bgAudio=null}}catch(e){}
+  if(bgUrl){URL.revokeObjectURL(bgUrl);bgUrl=null}
+  if('mediaSession' in navigator){try{navigator.mediaSession.metadata=null}catch(e){}}
+}
+/* Écran toujours allumé (Wake Lock) */
+let wl=null;
+async function grabWakeLock(){
+  try{
+    if(wl)return;
+    wl=await (navigator.wakeLock&&navigator.wakeLock.request('screen'));
+    if(wl)wl.addEventListener('release',()=>{wl=null});
+  }catch(e){wl=null}
+}
+function releaseWakeLock(){try{wl&&wl.release()}catch(e){}wl=null}
+/* Écran noir de veille après 30 s d'inactivité */
+const DIM_DELAY=30000;
+let dimTimer=null;
+function dimShow(){
+  if(!rec||rec.status!=='recording')return;
+  $('#dim').classList.add('on');
+  $('#dim-timer').textContent=fmtClock(nowMs());
+}
+function dimArm(){
+  clearTimeout(dimTimer);dimTimer=null;
+  if(!rec||rec.status!=='recording')return;
+  dimTimer=setTimeout(dimShow,DIM_DELAY);
+}
+function dimOff(){
+  clearTimeout(dimTimer);dimTimer=null;
+  $('#dim').classList.remove('on');
+}
+function wireDim(){
+  $('#dim').addEventListener('click',()=>{dimOff();dimArm()});
+  ['pointerdown','touchstart','mousedown','keydown'].forEach(ev=>
+    document.addEventListener(ev,()=>{
+      if(!rec||rec.status!=='recording')return;
+      if($('#dim').classList.contains('on'))dimOff();
+      dimArm();
+    },{passive:true}));
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible')return;
+  if(rec||!$('#composer').hidden)grabWakeLock();
+  if(!rec||rec.status==='stopped')return;
+  fitCanvas();
+  if(performance.now()-(rec.lastFrame||0)>2500){cancelAnimationFrame(rec.raf);frame()}
+  if(rec.wasHidden){
+    rec.wasHidden=false;
+    toast('L\u2019enregistrement a continué — '+fmtClock(nowMs())+' au compteur.','info',3200);
   }
 });
+document.addEventListener('visibilitychange',()=>{if(rec&&document.visibilityState!=='visible')rec.wasHidden=true});
 setInterval(()=>{
   if(rec&&rec.status!=='stopped'&&performance.now()-(rec.lastFrame||0)>3500){
     cancelAnimationFrame(rec.raf);frame();
@@ -2295,50 +2523,13 @@ setInterval(()=>{
 },2000);
 window.addEventListener('beforeunload',e=>{if(rec&&rec.status!=='stopped'){e.preventDefault();e.returnValue=''}});
 
-/* ==================== LECTEUR AUDIO ==================== */
-function fixDuration(){
-  const a=$('#audio-el');
-  if(a.duration===Infinity||isNaN(a.duration)){
-    const h=()=>{if(isFinite(a.duration)&&a.duration>0){a.currentTime=0;$('#pl-dur').textContent=fmtClock(a.duration*1000);a.removeEventListener('durationchange',h)}};
-    a.addEventListener('durationchange',h);
-    try{a.currentTime=1e7}catch(e){}
-  }
-}
-function wirePlayer(){
-  const a=$('#audio-el');
-  a.addEventListener('loadedmetadata',()=>{
-    if(isFinite(a.duration)&&a.duration>0)$('#pl-dur').textContent=fmtClock(a.duration*1000);
-    else fixDuration();
-  });
-  a.addEventListener('timeupdate',()=>{
-    $('#pl-cur').textContent=fmtClock(a.currentTime*1000);
-    if(isFinite(a.duration)&&a.duration>0)$('#pl-fill').style.width=(a.currentTime/a.duration*100).toFixed(2)+'%';
-  });
-  a.addEventListener('ended',()=>{$('#pl-play').innerHTML=icon('play',20)});
-  $('#pl-play').addEventListener('click',()=>{
-    if(!a.src){toast('Aucun audio disponible.','warn');return}
-    if(a.paused){fixDuration();a.play()}else a.pause();
-    $('#pl-play').innerHTML=icon(a.paused?'play':'pause',20);
-  });
-  $('#pl-bar').addEventListener('click',e=>{
-    if(!a.src||!isFinite(a.duration)||a.duration<=0)return;
-    const r=e.currentTarget.getBoundingClientRect();
-    a.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*a.duration;
-  });
-  const speeds=[1,1.5,2];let si=0;
-  $('#pl-speed').addEventListener('click',()=>{
-    si=(si+1)%speeds.length;a.playbackRate=speeds[si];
-    $('#pl-speed').textContent=speeds[si].toString().replace('.',',')+'×';
-  });
-}
-
 /* ==================== EXPORTS ==================== */
 const PRINT_GROUPS=[
   {k:'resume',label:'Résumé',desc:'Vue d\u2019ensemble, plan, points clés, décisions et actions.'},
   {k:'notions',label:'Notions & références',desc:'Notions clés, définitions et liens pour approfondir.'},
   {k:'transcript',label:'Transcription intégrale',desc:'Le texte intégral horodaté de l\u2019enregistrement.'}
 ];
-const PDF_BUILD='v3';
+const PDF_BUILD='v4';
 let _echoFonts=null;
 async function loadEchoFonts(){
   if(_echoFonts!==null)return _echoFonts;
@@ -2386,11 +2577,14 @@ async function ensureJsPDF(){
 }
 function _expHelpers(sel){
   const root=$('#doc-body');
+  if(state.current)fillLazy(root,state.current.segments);
   const keep=el=>{const g=el.closest('[data-print-group]');return !g||!!sel[g.dataset.printGroup]};
-  const textOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('.kt,.tstamp,.sec-tools').forEach(n=>n.remove());return (c.textContent||'').replace(/\s+/g,' ').trim()};
+  const textOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('.kt,.tstamp,.sec-tools,summary').forEach(n=>n.remove());return (c.textContent||'').replace(/\s+/g,' ').trim()};
   const stampOf=el=>{const k=el&&el.querySelector('.kt,.tstamp');return k?k.textContent.trim():''};
-  return {root,keep,textOf,stampOf};
+  const trHostOf=el=>el.classList&&el.classList.contains('tr-lines')?el:(el.tagName==='DETAILS'?el.querySelector('.tr-lines'):null);
+  return {root,keep,textOf,stampOf,trHostOf};
 }
+const BODY_SEL=':scope > p, :scope > h3, :scope > ul, :scope > div, :scope > details';
 function askExportParts(fmt){
   return new Promise(res=>{
     let sel={resume:true,notions:false,transcript:false};
@@ -2455,8 +2649,6 @@ function buildPDF(sel,s,fonts){
   const M=58,CW=W-2*M,BOT=H-70;
   const INK='#1B1B18',GRAY='#6F6F68',LEADGRAY='#5A5A52',HAIR='#DBDBD3',ACCENT='#B4530A';
   const LEAD=15,BODY=10;
-
-  /* ---- Police : EchoSans (DejaVu, Unicode) si chargée, sinon helvetica ---- */
   let F='helvetica',UNICODE=false;
   if(fonts&&fonts.r&&fonts.b){
     try{
@@ -2467,9 +2659,6 @@ function buildPDF(sel,s,fonts){
       F='EchoSans';UNICODE=true;
     }catch(e){F='helvetica';UNICODE=false}
   }
-  /* Translittération de repli (hors ligne). Appliquée AVANT toute mesure
-     de largeur : les deux se font sur la même chaîne — plus aucun
-     débordement ni artefact de mesure. */
   const MAP={'\u2014':'-','\u2013':'-','\u2011':'-','\u2026':'...','\u2019':"'",'\u2018':"'",'\u201C':'"','\u201D':'"','\u00AB':'"','\u00BB':'"','\u00B7':'-','\u2022':'-','\u0153':'oe','\u0152':'OE'};
   const RE=/[\u2014\u2013\u2011\u2026\u2019\u2018\u201C\u201D\u00AB\u00BB\u00B7\u2022\u0153\u0152]/;
   const fall=t=>{
@@ -2477,11 +2666,7 @@ function buildPDF(sel,s,fonts){
     if(UNICODE||!RE.test(str))return str;
     return str.replace(/[\u2014\u2013\u2011\u2026\u2019\u2018\u201C\u201D\u00AB\u00BB\u00B7\u2022\u0153\u0152]/g,m=>MAP[m]);
   };
-
   let y=M+8;
-  /* Chaque fragment porte son état complet ; draw() réinitialise
-     police + couleur avant chaque fragment — plus d'état hérité
-     entre blocs (source des gris résiduels). */
   const setF=(st,size)=>{doc.setFont(F,st);doc.setFontSize(size)};
   const tw=(t,st,size)=>{setF(st,size);return doc.getTextWidth(t)};
   function hardChunks(word,st,size,maxW){
@@ -2498,7 +2683,6 @@ function buildPDF(sel,s,fonts){
     const put=(t,st,c,w)=>{lines[lines.length-1].push({t,st,c,w});x+=w};
     for(const r of runs){
       const st=r.s||'normal';
-      /* mesure et dessin sur le texte translittéré — identiques */
       const src=fall(r.t).replace(/[\u00A0\u202F]/g,' ');
       for(const w of src.split(/\s+/).filter(Boolean)){
         const parts=tw(w,st,size)<=maxW?[w]:hardChunks(w,st,size,maxW);
@@ -2527,22 +2711,16 @@ function buildPDF(sel,s,fonts){
     });
   }
   const para=(runs,o={})=>draw(wrap(runs,o.size||BODY,o.maxW||CW-(o.hang||0)),o);
-
-  const {root,keep,textOf,stampOf}=_expHelpers(sel);
-
+  const {root,keep,textOf,stampOf,trHostOf}=_expHelpers(sel);
   /* ================= EN-TÊTE ================= */
-  /* Bandeau : famille du corps, interlettrage doux, jamais d'héritage. */
   setF('bold',8);
   doc.setTextColor(ACCENT);
   doc.setCharSpace(0.6);
   doc.text(fall('ÉCHO — NOTE DE SYNTHÈSE'),M,y);
   doc.setCharSpace(0);
   y+=24;
-  /* Titre : 14 pt gras — même famille que les titres de section (12 pt).
-     C'était le 18 pt qui « sortait » de la famille typographique. */
   para([{t:s.title,s:'bold'}],{size:14,lead:19});
   y+=1;
-  /* Métadonnées : style strictement identique aux mentions du document. */
   const words=s.segments&&s.segments.length?wordCount(s.segments.map(x=>x.text).join(' ')):0;
   para([{t:(TYPE_LABEL[s.type]||'Enregistrement')+'   ·   '+fmtDate(s.createdAt)+'   ·   '+fmtDurLong(s.durationMs)+(words?'   ·   '+words+' mots':''),c:GRAY}],{size:8,lead:11});
   y+=9;
@@ -2551,7 +2729,6 @@ function buildPDF(sel,s,fonts){
     para([{t:leadEl.textContent.trim(),c:LEADGRAY}],{size:10,lead:14});
     y+=6;
   }
-
   /* ================= SECTIONS ================= */
   root.querySelectorAll('.sec').forEach(sec=>{
     if(!keep(sec))return;
@@ -2561,10 +2738,7 @@ function buildPDF(sel,s,fonts){
     runs.push({t:(tit?tit.textContent.trim():'')||'Section',s:'bold'});
     if(ts)runs.push({t:'   ['+ts+']',c:GRAY});
     const head=wrap(runs,12,CW);
-    /* Titre jamais orphelin : saut de page s'il reste moins que
-       le titre + deux lignes de corps. */
     if(y+16+head.length*16+2*LEAD>BOT){doc.addPage();y=M+8}
-    /* Filet aéré, jamais en collision avec l'en-tête ni le haut de page */
     doc.setDrawColor(HAIR);doc.setLineWidth(0.7);
     if(y>M+22)doc.line(M,y-13,W-M,y-13);
     y+=7;
@@ -2572,8 +2746,17 @@ function buildPDF(sel,s,fonts){
     y+=3;
     const body=sec.querySelector('.sec-body');
     if(body){
-      body.querySelectorAll(':scope > p, :scope > h3, :scope > ul, :scope > div').forEach(el=>{
+      body.querySelectorAll(BODY_SEL).forEach(el=>{
         if(!keep(el))return;
+        const trHost=trHostOf(el);
+        if(trHost){
+          trHost.querySelectorAll(':scope > .tr-line').forEach(tr=>{
+            const st=stampOf(tr);
+            para([{t:st?'['+st+']   ':'',c:GRAY},{t:textOf(tr)}]);
+            y+=2;
+          });
+          return;
+        }
         if(el.tagName==='P'){
           para([{t:textOf(el)}]);y+=5;
         }else if(el.tagName==='H3'){
@@ -2596,12 +2779,6 @@ function buildPDF(sel,s,fonts){
           const links=[...el.querySelectorAll('.notion-links a')].map(a=>a.getAttribute('href')).filter(Boolean);
           if(links.length)para(links.map((l,i)=>({t:(i?'   ·   ':'')+l,c:GRAY})),{size:8,lead:11});
           y+=8;
-        }else if(el.classList.contains('tr-lines')){
-          el.querySelectorAll(':scope > .tr-line').forEach(tr=>{
-            const st=stampOf(tr);
-            para([{t:st?'['+st+']   ':'',c:GRAY},{t:textOf(tr)}]);
-            y+=2;
-          });
         }else if(el.classList.contains('note-block')){
           const nt=el.querySelector('.note-text');
           para([{t:'Précision — ',s:'bold'},{t:(nt&&nt.textContent.trim())||textOf(el)}]);
@@ -2611,7 +2788,6 @@ function buildPDF(sel,s,fonts){
     }
     y+=8;
   });
-
   /* ================= PIED DE PAGE ================= */
   const total=doc.internal.getNumberOfPages();
   const short=s.title.length>60?s.title.slice(0,59)+'…':s.title;
@@ -2626,7 +2802,7 @@ function buildPDF(sel,s,fonts){
   doc.save(slug(s.title)+'.pdf');
 }
 function buildTXT(sel,s){
-  const {root,keep,textOf,stampOf}=_expHelpers(sel);
+  const {root,keep,textOf,stampOf,trHostOf}=_expHelpers(sel);
   const L=[];
   const rule=c=>L.push(c.repeat(72));
   const words=s.segments&&s.segments.length?wordCount(s.segments.map(x=>x.text).join(' ')):0;
@@ -2646,8 +2822,13 @@ function buildTXT(sel,s){
     L.push('');
     const body=sec.querySelector('.sec-body');
     if(body){
-      body.querySelectorAll(':scope > p, :scope > h3, :scope > ul, :scope > div').forEach(el=>{
+      body.querySelectorAll(BODY_SEL).forEach(el=>{
         if(!keep(el))return;
+        const trHost=trHostOf(el);
+        if(trHost){
+          trHost.querySelectorAll(':scope > .tr-line').forEach(tr=>{const st=stampOf(tr);L.push((st?'['+st+']  ':'')+textOf(tr))});
+          return;
+        }
         if(el.tagName==='P'){const t=textOf(el);if(t){L.push(t);L.push('')}}
         else if(el.tagName==='H3'){const st=stampOf(el);L.push((st?'['+st+']  ':'')+textOf(el));L.push('')}
         else if(el.classList.contains('keylist')){
@@ -2661,8 +2842,6 @@ function buildTXT(sel,s){
           const links=[...el.querySelectorAll('.notion-links a')].map(a=>a.getAttribute('href')).filter(Boolean);
           if(links.length)L.push('    Réf. : '+links.join('  ·  '));
           L.push('');
-        }else if(el.classList.contains('tr-lines')){
-          el.querySelectorAll(':scope > .tr-line').forEach(tr=>{const st=stampOf(tr);L.push((st?'['+st+']  ':'')+textOf(tr))});
         }else if(el.classList.contains('note-block')){
           const nt=el.querySelector('.note-text');
           L.push('Précision — '+((nt&&nt.textContent.trim())||textOf(el)));
@@ -2677,12 +2856,16 @@ function buildTXT(sel,s){
   downloadBlob(new Blob(['\ufeff'+L.join('\r\n')],{type:'text/plain;charset=utf-8'}),slug(s.title)+'.txt');
 }
 function doPrint(sel){
+  if(state.current)fillLazy($('#doc-body'),state.current.segments);
+  const opened=[];
+  $$('#doc-body details').forEach(d=>{if(!d.open){d.open=true;opened.push(d)}});
   const hidden=[];
   $$('#doc-body [data-print-group]').forEach(el=>{
     if(!sel[el.dataset.printGroup]){el.style.display='none';hidden.push(el)}
   });
   const restore=()=>{
     hidden.forEach(el=>{el.style.display=''});
+    opened.forEach(d=>{d.open=false});
     window.removeEventListener('afterprint',restore);
     clearTimeout(fb);
   };
@@ -2692,10 +2875,12 @@ function doPrint(sel){
   setTimeout(()=>{try{window.print()}catch(e){restore();toast('Impression impossible.','warn')}},450);
 }
 function exportAudio(){
-  const s=state.current;if(!s)return;
-  if(!state.audioBlob)return toast('Aucun audio disponible pour cet enregistrement.','warn');
-  downloadBlob(state.audioBlob,slug(s.title)+'.'+(s.audioExt||'webm'));
-  toast('Audio téléchargé.','ok');
+  const s=state.current;
+  if(!s||!hasAudio())return toast('Aucun audio disponible pour cet enregistrement.','warn');
+  AUD.parts.forEach((p,i)=>setTimeout(()=>{
+    downloadBlob(p.blob,slug(s.title)+(AUD.parts.length>1?'-'+String(i+1).padStart(2,'0'):'')+'.'+(s.audioExt||'webm'));
+  },i*500));
+  toast(AUD.parts.length>1?(AUD.parts.length+' fichiers téléchargés.'):'Audio téléchargé.','ok');
 }
 const DOC_STYLES=`body{background:#141712;margin:0;padding:36px 16px;font-family:Georgia,serif;color:#EDEEE8}
 main{max-width:720px;margin:0 auto;background:#1A1E18;padding:38px 30px;border-left:2px solid #FF7A1A;border-radius:12px}
@@ -2719,31 +2904,157 @@ main{max-width:720px;margin:0 auto;background:#1A1E18;padding:38px 30px;border-l
 .notion-links a{color:#4ADE80}
 .note-block{background:rgba(255,122,26,.08);border-left:3px solid #FF7A1A;padding:12px 14px;margin:12px 0}
 .note-tag{font:600 9px monospace;letter-spacing:.18em;text-transform:uppercase;color:#FF7A1A}
+summary{display:none}
 .tr-line{display:flex;gap:12px;padding:7px 0;border-top:1px solid rgba(237,238,232,.06);font-size:14px;line-height:1.5}
 .tr-t{min-width:44px;text-align:right;font:11px monospace;color:#FF7A1A}
 .doc-colophon{margin-top:24px;padding-top:10px;border-top:1px solid rgba(237,238,232,.15);font:10px monospace;color:#969C8F}`;
+function docHTMLForExport(s){
+  const tmp=document.createElement('div');
+  tmp.innerHTML=s.docHTML||'';
+  fillLazy(tmp,s.segments);
+  tmp.querySelectorAll('details').forEach(d=>d.setAttribute('open',''));
+  tmp.querySelectorAll('.sec-tools').forEach(n=>n.remove());
+  return tmp.innerHTML;
+}
 function exportHTML(){
   const s=state.current;if(!s||!s.docHTML)return;
   const html='<!DOCTYPE html>\n<html lang="fr"><head><meta charset="utf-8">'
     +'<meta name="viewport" content="width=device-width, initial-scale=1">'
     +'<title>'+esc(s.title)+'</title><style>'+DOC_STYLES+'</style></head>'
-    +'<body><main>'+s.docHTML+'</main></body></html>';
+    +'<body><main>'+docHTMLForExport(s)+'</main></body></html>';
   downloadBlob(new Blob([html],{type:'text/html;charset=utf-8'}),slug(s.title)+'.html');
   toast('Document HTML téléchargé.','ok');
 }
 function parseRaw(raw){
   const segs=[];let lastT=0;
   for(const line of raw.split(/\n+/)){
-    const m=line.match(/^\[?(\d{1,2}):(\d{2})\]?\s*(.+)$/);
-    if(m){const t=(+m[1])*60000+(+m[2])*1000;lastT=t;const txt=m[3].trim();if(txt)segs.push({start:t,end:t,text:txt})}
-    else{const txt=line.trim();if(txt){if(segs.length)segs[segs.length-1].text+=' '+txt;else segs.push({start:lastT,end:lastT,text:txt})}}
+    const m=line.match(/^\[?(\d{1,2}):(\d{2})(?::(\d{2}))?\]?\s*(.+)$/);
+    if(m){
+      const t=m[3]!=null?((+m[1])*3600000+(+m[2])*60000+(+m[3])*1000):((+m[1])*60000+(+m[2])*1000);
+      lastT=t;const txt=m[4].trim();if(txt)segs.push({start:t,end:t,text:txt});
+    }else{
+      const txt=line.trim();
+      if(txt){if(segs.length)segs[segs.length-1].text+=' '+txt;else segs.push({start:lastT,end:lastT,text:txt})}
+    }
   }
   return segs;
 }
 
+/* ==================== DÉCOUPE MANUELLE (IMPORTS VOLUMINEUX) ==================== */
+function askSplitAudio(sess){
+  const root=$('#modal-root');
+  const g=++_modalGen;
+  const blob=AUD.parts[0]?AUD.parts[0].blob:null;
+  const sizeMb=(blob?blob.size:0)/1048576;
+  const ext=extFor(blob,'',sess.audioExt);
+  const cheap=(ext==='mp3'||ext==='wav');
+  let targetMb=20;
+  root.innerHTML=`<div class="modal-overlay"></div>
+    <div class="modal" style="width:min(94vw,400px)"><h3>Découper l\u2019audio</h3>
+    <p>La découpe transforme l\u2019audio en morceaux autonomes, transcrits ensuite comme un seul document (horodatages continus).</p>
+    <div class="split-modal-body">
+      <div class="split-size-row">
+        <button class="split-chip on" data-mb="20">20 Mo</button>
+        <button class="split-chip" data-mb="10">10 Mo</button>
+        <button class="split-chip" data-mb="5">5 Mo</button>
+        <input class="split-custom" type="number" min="2" max="23" step="1" placeholder="Mo…" inputmode="numeric">
+      </div>
+      <p class="split-est" id="split-est"></p>
+      <p class="split-hintlist" id="split-hint"></p>
+    </div>
+    <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
+    <button class="btn-primary" data-yes="1" style="height:44px">${icon('chip',15)}<span>Découper</span></button></div></div>`;
+  const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
+  requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
+  const est=m.querySelector('#split-est'),hint=m.querySelector('#split-hint');
+  const upd=()=>{
+    const n=Math.max(1,Math.ceil(sizeMb/targetMb));
+    est.textContent='≈ '+n+' morceau'+(n>1?'x':'')+' de ~'+targetMb+' Mo ('+Math.round(sizeMb)+' Mo au total).';
+    hint.textContent=cheap
+      ? 'Format '+ext.toUpperCase()+' : découpe instantanée, sans décodage ni perte de qualité.'
+      : 'Ce format exige un décodage complet : long et gourmand en mémoire sur mobile. Convertir le fichier en MP3 avant import est nettement préférable.';
+  };
+  upd();
+  m.querySelectorAll('.split-chip').forEach(c=>c.addEventListener('click',()=>{
+    m.querySelectorAll('.split-chip').forEach(x=>x.classList.remove('on'));
+    c.classList.add('on');targetMb=+c.dataset.mb;
+    m.querySelector('.split-custom').value='';
+    upd();
+  }));
+  m.querySelector('.split-custom').addEventListener('input',e=>{
+    const v=parseFloat(e.target.value);
+    if(v>=2&&v<=23){targetMb=Math.round(v);m.querySelectorAll('.split-chip').forEach(x=>x.classList.remove('on'));upd()}
+  });
+  const close=()=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250)};
+  ov.onclick=close;
+  m.querySelector('[data-no]').onclick=close;
+  m.querySelector('[data-yes]').onclick=async()=>{close();await doSplitAudio(sess,targetMb)};
+}
+async function doSplitAudio(sess,targetMb){
+  const rows=await resolveAudioParts(sess);
+  if(!rows.length){toast('Aucun audio à découper.','warn');return}
+  if(rows.length>1){toast('Cet enregistrement est déjà en '+rows.length+' morceaux.','info',3200);return}
+  if(sess.segments&&sess.segments.length){
+    const go=await confirmDialog({title:'Transcription existante',
+      body:'Le découpage recalcule les horodatages : la transcription actuelle sera supprimée et devra être refaite.',
+      ok:'Continuer',cancel:'Annuler',danger:true});
+    if(!go)return;
+  }
+  const blob=rows[0].blob;
+  const ext=extFor(blob,rows[0].name,sess.audioExt);
+  const max=Math.max(1,Math.round(targetMb*1024*1024));
+  composerShow();
+  $('#composer-title').textContent='Découpe de l\u2019audio';
+  $('#composer-sub').textContent=sess.title;
+  $('#ring-fg').style.strokeDashoffset=326.7;
+  $('#ring-core').innerHTML=`<span class="spin">${icon('chip',30)}</span>`;
+  $('#composer-note').textContent='Les morceaux remplacent l\u2019audio original — la transcription les enverra directement.';
+  $('#composer-body').innerHTML=`<div class="ai-stat"><p class="ai-phase" id="sp-phase">Préparation</p><p class="ai-detail" id="sp-detail"></p></div>`;
+  const ph=(a,b)=>{const p=$('#sp-phase'),d=$('#sp-detail');if(p&&a)p.textContent=a;if(d&&b!=null)d.textContent=b};
+  grabWakeLock();startKeepAlive(sess.title);
+  try{
+    let units;
+    if(ext==='mp3'){ph('Découpe MP3','Coupe sur frontière de trame, sans décodage…');units=await mp3Units(blob,max)}
+    else if(ext==='wav'){ph('Découpe WAV','Coupe sur frontière d\u2019échantillon…');units=await wavUnits(blob,max)}
+    else units=await decodeUnits(blob,max,ph);
+    if(units.length<2){toast('Audio trop court pour être découpé à cette taille.','info');composerHide();stopKeepAlive();releaseWakeLock();return}
+    const parts=units.map((u,i)=>({name:'partie-'+String(i+1).padStart(2,'0')+'.'+u.ext,blob:u.blob,durMs:0}));
+    await dbPut('audio',{id:sess.id,multi:parts});
+    sess.parts=parts.map(p=>({name:p.name,size:p.blob.size,durMs:0}));
+    sess.audioExt=units[0].ext;
+    delete sess.trProgress;
+    sess.segments=[];
+    await saveSession(sess);
+    state.current=sess;
+    await setupAudioSource(sess);
+    resetPlayerUI();
+    composerHide();stopKeepAlive();releaseWakeLock();
+    toast(parts.length+' morceaux créés — prêts pour une transcription légère.','ok',3600);
+    const go=await confirmDialog({title:'Transcrire maintenant ?',body:parts.length+' morceaux seront transcrits comme un seul document, puis l\u2019IA en rédigera le résumé.',ok:'Transcrire et résumer',cancel:'Plus tard'});
+    if(go){
+      const done=await runApiTranscription(sess);
+      if(done&&AI.ready)await runAIDraft(sess);
+      else if(done)await composeAndShow(sess);
+    }else{renderDocBody(sess);show('doc')}
+  }catch(e){
+    composerHide();stopKeepAlive();releaseWakeLock();
+    toast('Découpe impossible : '+(e&&e.message?e.message:'erreur'),'warn',5000);
+  }
+}
+
 /* ==================== BIBLIOTHÈQUE ==================== */
 async function refreshHome(){
-  const all=(await dbAll('sessions')).sort((a,b)=>b.createdAt-a.createdAt);
+  let all=[];
+  try{all=await dbAll('meta')}catch(e){}
+  if(!all.length){
+    /* migration unique depuis l'ancien schéma */
+    try{
+      const full=await dbAll('sessions');
+      for(const s of full){if(s&&s.id)await dbPut('meta',metaOf(s))}
+      all=await dbAll('meta');
+    }catch(e){}
+  }
+  all=all.filter(x=>x&&x.id).sort((a,b)=>b.createdAt-a.createdAt);
   state.sessions=all;
   renderLib(all);
   updateHomeBanner();
@@ -2759,14 +3070,14 @@ function renderLib(all){
     <div class="lib-item" data-id="${s.id}">
       <div class="lib-main" data-open="1">
         <div class="lib-title">${esc(s.title)}</div>
-        <div class="lib-meta">${s.imported?'Importé · ':''}${esc(fmtDate(s.createdAt))} · ${fmtClock(s.durationMs)} · ${wordCount(s.segments.map(x=>x.text).join(' '))} mots</div>
+        <div class="lib-meta">${s.imported?'Importé · ':''}${esc(fmtDate(s.createdAt))} · ${fmtClock(s.durationMs)} · ${s.words?(s.words+' mots'):'non transcrit'}${s.parts>1?(' · '+s.parts+' morceaux'):''}</div>
       </div>
       <span class="lib-type">${esc(TYPE_LABEL[s.type]||'').toUpperCase()}</span>
       <button class="icon-btn lib-del" data-del="1" title="Supprimer">${icon('trash',16)}</button>
     </div>`).join('');
 }
 function wireLib(){
-  $('#lib-list').addEventListener('click',e=>{
+  $('#lib-list').addEventListener('click',async e=>{
     const item=e.target.closest('.lib-item');if(!item)return;
     const id=item.dataset.id;
     if(e.target.closest('[data-del]')){
@@ -2779,9 +3090,11 @@ function wireLib(){
     const act=e.target.closest('[data-act]');
     if(act){
       if(act.dataset.act==='del'){
-        dbDel('sessions',id);dbDel('audio',id).then(()=>refreshHome());
+        await deleteSession(id);
+        if(state.current&&state.current.id===id){state.current=null;releaseAudio()}
         toast('Enregistrement supprimé.','info');
-      }else refreshHome();
+      }
+      refreshHome();
       return;
     }
     if(e.target.closest('[data-open]'))openDoc(id);
@@ -2790,7 +3103,7 @@ function wireLib(){
 
 /* ==================== SERVICE WORKER ==================== */
 const SW_SRC=`/* Écho — service worker : cache hors ligne de l'application */
-const CACHE='echo-v1';
+const CACHE='echo-v2';
 self.addEventListener('install',e=>{
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c=>c.add('./')).catch(()=>{}));
@@ -2827,14 +3140,23 @@ async function setupSW(){
     st.className='set-status err';
   }
 }
+async function showQuota(){
+  const el=$('#quota-status');if(!el)return;
+  try{
+    if(!navigator.storage||!navigator.storage.estimate){el.textContent='';return}
+    const {usage,quota}=await navigator.storage.estimate();
+    let persisted=false;
+    try{persisted=navigator.storage.persisted?await navigator.storage.persisted():false}catch(e){}
+    el.textContent='Stockage : '+fmtMo(usage||0)+' utilisés sur ~'+fmtMo(quota||0)+' disponibles'+(persisted?' · conservation permanente accordée.':' · conservation permanente non accordée (le navigateur peut effacer les données après une longue inactivité).');
+    el.className='set-status'+(persisted?' ok':'');
+  }catch(e){el.textContent=''}
+}
 
 /* ==================== RÉGLAGES ==================== */
 function updateApiPill(){
   const p=$('#api-pill');
-  if(CFG.key){
-    p.hidden=false;
-    $('#api-pill-txt').textContent='Whisper + IA prêts';
-  }else p.hidden=true;
+  if(CFG.key){p.hidden=false;$('#api-pill-txt').textContent='Whisper + IA prêts'}
+  else p.hidden=true;
 }
 function updateHomeBanner(){
   const b=$('#setup-banner');
@@ -2858,8 +3180,10 @@ function openSettings(){
   st.className='set-status';
   $('#btn-forget').hidden=!localStorage.getItem('echo_groq_key');
   $$('.model-card[data-model]').forEach(c=>c.classList.toggle('active',c.dataset.model===CFG.model));
+  $$('.model-card[data-bps]').forEach(c=>c.classList.toggle('active',+c.dataset.bps===CFG.bps));
   $('#lang-select').value=CFG.lang;
   refreshAIFields();
+  showQuota();
 }
 function refreshAIFields(){
   const inp=$('#ai-model-input');
@@ -2872,7 +3196,7 @@ async function proceedPending(){
     const go=await confirmDialog({title:'Transcrire maintenant ?',body:'« '+s.title+' » attend sa transcription.',ok:'Transcrire'});
     const done=go?await runApiTranscription(s):false;
     if(done&&AI.ready)await runAIDraft(s);
-    openDoc(s.id);
+    else openDoc(s.id);
   }else{
     const go=await confirmDialog({title:'Rédiger le résumé IA ?',body:'« '+s.title+' » a déjà une transcription.',ok:'Rédiger'});
     if(go)await runAIDraft(s);else openDoc(s.id);
@@ -2908,12 +3232,8 @@ function wireSettings(){
         $('#btn-forget').hidden=!raw;
         updateApiPill();updateHomeBanner();refreshAIFields();vibrate(10);
         if(state.pending)await proceedPending();
-      }else{
-        st.textContent=r.reason;st.className='set-status err';
-      }
-    }catch(e){
-      st.textContent='Connexion impossible — vérifiez votre réseau.';st.className='set-status err';
-    }
+      }else{st.textContent=r.reason;st.className='set-status err'}
+    }catch(e){st.textContent='Connexion impossible — vérifiez votre réseau.';st.className='set-status err'}
     btn.disabled=false;btn.textContent='Tester et enregistrer';
   });
   $('#btn-forget').addEventListener('click',()=>{
@@ -2928,6 +3248,11 @@ function wireSettings(){
     CFG.model=c.dataset.model;
     $$('.model-card[data-model]').forEach(x=>x.classList.toggle('active',x===c));
   }));
+  $$('.model-card[data-bps]').forEach(c=>c.addEventListener('click',()=>{
+    CFG.bps=+c.dataset.bps;
+    $$('.model-card[data-bps]').forEach(x=>x.classList.toggle('active',x===c));
+    toast('Qualité d\u2019enregistrement : '+(c.querySelector('.model-name').textContent),'ok',2000);
+  }));
   $('#lang-select').addEventListener('change',e=>{CFG.lang=e.target.value});
   $('#ai-model-input').addEventListener('change',e=>{AI.model=e.target.value.trim()});
   $('#ai-btn-models').addEventListener('click',async()=>{
@@ -2941,9 +3266,7 @@ function wireSettings(){
         label:m+(m===AI.model?' — actuel':''),
         fn:()=>{AI.model=m;$('#ai-model-input').value=m;toast('Modèle de rédaction : '+m,'ok',1800)}
       })));
-    }catch(e){
-      toast('Liste des modèles indisponible — vérifiez la clé ou le réseau.','warn',4600);
-    }
+    }catch(e){toast('Liste des modèles indisponible — vérifiez la clé ou le réseau.','warn',4600)}
     btn.disabled=false;btn.innerHTML=old;
   });
   $('#btn-sw-dl').addEventListener('click',()=>{
@@ -2981,23 +3304,21 @@ function importAIReply(sess){
       try{
         sess.aiModel='importé (assistant externe)';
         sess.docHTML=buildAIDocHTML(D,sess);
-        await dbPut('sessions',sess);
+        await saveSession(sess);
         renderDocBody(sess);
         show('doc');
         toast('Réponse importée — document composé comme une rédaction IA.','ok',3600);
-      }catch(e){
-        toast('JSON compris mais document impossible : '+(e&&e.message?e.message:'erreur'),'warn',4200);
-      }
+      }catch(e){toast('JSON compris mais document impossible : '+(e&&e.message?e.message:'erreur'),'warn',4200)}
     }else{
       const paragraphs=raw.split(/\n{2,}/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
       if(!paragraphs.length){toast('Réponse vide.','warn');return}
       sess.aiModel='importé (texte libre)';
       sess.docHTML=buildAIDocHTML({
         vue_densemble:paragraphs[0],
-        sections:paragraphs.slice(1,9).map(p=>({titre:'',depuis:null,contenu:p})),
+        sections:paragraphs.slice(1,12).map(p=>({titre:'',depuis:null,contenu:p})),
         notions:[],points_cles:[]
       },sess);
-      await dbPut('sessions',sess);
+      await saveSession(sess);
       renderDocBody(sess);
       show('doc');
       toast('Texte importé comme synthèse en clair.','ok',3200);
@@ -3006,13 +3327,6 @@ function importAIReply(sess){
 }
 
 /* ==================== LIAISONS GÉNÉRALES ==================== */
-function saveNow(){
-  if(!state.current)return;
-  state.current.docHTML=$('#doc-body').innerHTML;
-  const h=$('#doc-body').querySelector('.doc-title');
-  if(h){const t=h.textContent.trim();if(t)state.current.title=t}
-  dbPut('sessions',state.current).then(flashSaved);
-}
 function flashSaved(){
   const el=$('#save-state');
   el.textContent='Enregistré à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
@@ -3020,131 +3334,12 @@ function flashSaved(){
   clearTimeout(flashSaved._t);
   flashSaved._t=setTimeout(()=>el.classList.remove('show'),1700);
 }
-function askSplitAudio(sess){
-  const root=$('#modal-root');
-  const g=++_modalGen;
-  const sizeMb=(state.audioBlob?state.audioBlob.size:0)/1048576;
-  const durMin=Math.max(1,Math.round((sess.durationMs||0)/60000));
-  let targetMb=20;
-  root.innerHTML=`<div class="modal-overlay"></div>
-    <div class="modal" style="width:min(94vw,400px)"><h3>Découper l\u2019audio</h3>
-    <p>La découpe transforme l\u2019audio en morceaux autonomes, transcrits ensuite comme un seul document (horodatages continus). Idéal avant une transcription sur mobile : chaque morceau part tel quel, sans conversion lourde.</p>
-    <div class="split-modal-body">
-      <div class="split-size-row">
-        <button class="split-chip on" data-mb="20">20 Mo</button>
-        <button class="split-chip" data-mb="10">10 Mo</button>
-        <button class="split-chip" data-mb="5">5 Mo</button>
-        <input class="split-custom" type="number" min="2" max="23" step="1" placeholder="Mo…" inputmode="numeric">
-      </div>
-      <p class="split-est" id="split-est"></p>
-      <p class="split-hintlist" id="split-hint"></p>
-    </div>
-    <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
-    <button class="btn-primary" data-yes="1" style="height:44px">${icon('chip',15)}<span>Découper</span></button></div></div>`;
-  const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
-  requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
-  const est=$('#split-est'),hint=$('#split-hint');
-  const upd=()=>{
-    const n=Math.max(1,Math.ceil(sizeMb/targetMb));
-    est.textContent='≈ '+n+' morceau'+(n>1?'x':'')+' de ~'+targetMb+' Mo ('+Math.round(sizeMb)+' Mo au total).';
-    if(/iPhone|iPad|iPod/i.test(navigator.userAgent)&&targetMb>20)
-      hint.textContent='Sur iPhone, préférez 10 Mo ou moins pour un maximum de sécurité mémoire.';
-    else
-      hint.textContent='Découpe MP3 exacte aux frontières. WebM/M4A : découpe temporelle par décodage par fenêtres — gardez l\u2019écran allumé pendant l\u2019opération.';
-  };
-  upd();
-  m.querySelectorAll('.split-chip').forEach(c=>c.addEventListener('click',()=>{
-    m.querySelectorAll('.split-chip').forEach(x=>x.classList.remove('on'));
-    c.classList.add('on');
-    targetMb=+c.dataset.mb;
-    const ci=m.querySelector('.split-custom');ci.value='';
-    upd();
-  }));
-  m.querySelector('.split-custom').addEventListener('input',e=>{
-    const v=parseFloat(e.target.value);
-    if(v>=2&&v<=23){
-      targetMb=Math.round(v);
-      m.querySelectorAll('.split-chip').forEach(x=>x.classList.remove('on'));
-      upd();
-    }
-  });
-  const close=()=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250)};
-  ov.onclick=close;
-  m.querySelector('[data-no]').onclick=close;
-  m.querySelector('[data-yes]').onclick=async()=>{
-    close();
-    await doSplitAudio(sess,targetMb);
-  };
-}
-async function doSplitAudio(sess,targetMb){
-  const blob=await resolveAudioBlob(sess);
-  if(!blob){toast('Aucun audio à découper.','warn');return}
-  const mime=String(blob.type||'').split(';')[0].trim().toLowerCase();
-  const ext=String(sess.audioExt||'').toLowerCase();
-  const isMp3=/mpeg|mp3/.test(mime)||ext==='mp3';
-  composerShow();
-  $('#composer-title').textContent='Découpe de l\u2019audio';
-  $('#composer-sub').textContent=sess.title;
-  $('#ring-fg').style.strokeDashoffset=326.7;
-  $('#ring-core').innerHTML=`<span class="spin">${icon('chip',30)}</span>`;
-  $('#composer-note').textContent='Les morceaux remplacent l\u2019audio original — la transcription les enverra directement, sans conversion lourde.';
-  grabWakeLock();
-  try{
-    let parts=[];
-    if(isMp3){
-      /* MP3 : coupure exacte aux frontières d'octets */
-      const SLICE=targetMb*1024*1024;
-      let off=0,acc=0;
-      while(off<blob.size){
-        const end=Math.min(off+SLICE,blob.size);
-        parts.push({blob:blob.slice(off,end),name:'partie-'+(parts.length+1)+'.mp3'});
-        off=end;
-      }
-    }else{
-      /* Autres formats : fenêtres temporelles via décodage économe */
-      $('#composer-body').innerHTML=`<div class="ai-stat"><p class="ai-phase" id="sp-phase">Décodage</p><p class="ai-detail" id="sp-detail">Préparation…</p></div>`;
-      const durs=[];
-      const durMs=sess.durationMs||await audioDuration(blob);
-      const bytesPerMs=blob.size/Math.max(1,durMs);
-      const winMs=(targetMb*1024*1024)/bytesPerMs;
-      const dec=await decodeAudio16k(blob);
-      const rate=dec.rate||16000;
-      const winSamples=Math.floor(winMs/1000*rate);
-      let off=0;
-      while(off<dec.len){
-        const end=Math.min(off+winSamples,dec.len);
-        $('#sp-phase').textContent='Fenêtre '+(parts.length+1);
-        $('#sp-detail').textContent=Math.round(off/rate)+' s / '+Math.round(dec.len/rate)+' s traités…';
-        parts.push({blob:encodeWav(monoSlice(dec,off,end),rate),name:'partie-'+(parts.length+1)+'.wav'});
-        off=end;
-      }
-    }
-    if(parts.length<2){toast('Audio trop court pour être découpé à cette taille.','info');composerHide();releaseWakeLock();return}
-    /* Sauvegarde : structure multi remplace le blob unique */
-    await dbPut('audio',{id:sess.id,multi:parts.map(p=>({name:p.name,blob:p.blob}))});
-    sess.parts=parts.map(p=>({name:p.name,size:p.blob.size}));
-    delete sess.trProgress;
-    delete sess.segments;
-    await dbPut('sessions',sess);
-    state.current=sess;
-    await setupAudioSource(sess);
-    resetPlayerUI();
-    composerHide();
-    releaseWakeLock();
-    toast(parts.length+' morceaux créés — prêts pour une transcription légère.','ok',3600);
-    const go=await confirmDialog({title:'Transcrire maintenant ?',body:parts.length+' morceaux seront transcrits comme un seul document, puis l\u2019IA en rédigera le résumé.',ok:'Transcrire et résumer',cancel:'Plus tard'});
-    if(go){
-      const done=await runApiTranscription(sess);
-      if(done&&AI.ready)await runAIDraft(sess);
-      else if(done)await composeAndShow(sess);
-    }else{
-      renderDocBody(sess);show('doc');
-    }
-  }catch(e){
-    composerHide();
-    releaseWakeLock();
-    toast('Découpe impossible : '+(e&&e.message?e.message:'erreur'),'warn',5000);
-  }
+function saveNow(){
+  if(!state.current)return;
+  state.current.docHTML=$('#doc-body').innerHTML;
+  const h=$('#doc-body').querySelector('.doc-title');
+  if(h){const t=h.textContent.trim();if(t)state.current.title=t}
+  saveSession(state.current).then(()=>{flashSaved();refreshHome()}).catch(()=>{});
 }
 function wire(){
   $('#brand-ico').innerHTML=icon('brand',24);
@@ -3155,6 +3350,7 @@ function wire(){
   $('#btn-mark').innerHTML=icon('bookmark',21);
   $('#btn-back').innerHTML=icon('chevl',18);
   $('#btn-menu').innerHTML=icon('dots',18);
+  $('#btn-edit').innerHTML=icon('pen',15)+'<span>Éditer</span>';
   $('#btn-pdf').innerHTML='<span>PDF</span>';
   $('#btn-txt').innerHTML='<span>TXT</span>';
   $('#btn-regen').innerHTML=icon('refresh',15)+'<span>Régénérer (analyse locale) depuis cette transcription</span>';
@@ -3162,6 +3358,7 @@ function wire(){
   $('#raw-details').querySelector('summary').insertAdjacentHTML('beforeend',icon('chevd',16));
   $('#ai-btn-models').innerHTML=icon('refresh',14)+'<span>Charger les modèles disponibles</span>';
   $('#btn-import').innerHTML=icon('upload',17)+'<span>Importer un audio</span>';
+  $('#btn-sw-dl').innerHTML=icon('download',15)+'<span>Télécharger sw.js</span>';
   $('#btn-zai').innerHTML=icon('ext',15)+'<span>Ouvrir Z.ai</span>';
   $('#btn-zai').addEventListener('click',()=>{
     try{window.open('https://chat.z.ai/','_blank','noopener')}
@@ -3173,8 +3370,8 @@ function wire(){
   [['#sg-c','cours'],['#sg-r','reunion'],['#sg-v','conversation']].forEach(([sel,t])=>{
     $(sel).innerHTML=icon(segs[t][0],17)+`<span>${segs[t][1]}</span>`;
   });
-  $$('.seg-btn').forEach(b=>b.addEventListener('click',()=>{
-    $$('.seg-btn').forEach(x=>x.classList.remove('active'));
+  $$('#view-home .seg-btn').forEach(b=>b.addEventListener('click',()=>{
+    $$('#view-home .seg-btn').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');state.newType=b.dataset.type;
   }));
   $('#btn-start').addEventListener('click',startSession);
@@ -3188,10 +3385,10 @@ function wire(){
     const s=state.current;if(!s)return;
     const done=await runApiTranscription(s);
     if(!done)return;
-    if(AI.ready){const ok=await runAIDraft(s);if(!ok)await composeAndShow(s);}
+    if(AI.ready){const ok=await runAIDraft(s);if(!ok)await composeAndShow(s)}
     else await composeAndShow(s);
   });
-  $('#btn-pause').addEventListener('click',()=>setPause(rec&&rec.status==='paused'?false:true));
+  $('#btn-pause').addEventListener('click',()=>setPause(!(rec&&rec.status==='paused')));
   $('#btn-stop').addEventListener('click',finalize);
   $('#btn-mark').addEventListener('click',()=>{
     if(!rec||rec.status==='stopped')return;
@@ -3218,6 +3415,12 @@ function wire(){
     if(state.editing)toast('Mode édition — touchez le texte pour le corriger ou le compléter.','info',2400);
     else saveNow();
   });
+  /* remplissage paresseux de la transcription intégrale (toggle ne bouillonne pas) */
+  $('#doc-body').addEventListener('toggle',e=>{
+    const d=e.target;
+    if(!d||d.tagName!=='DETAILS'||!d.open||!state.current)return;
+    fillLazy(d,state.current.segments);
+  },true);
   $('#doc-body').addEventListener('click',e=>{
     const add=e.target.closest('.add-note');
     if(add){
@@ -3227,19 +3430,17 @@ function wire(){
       nb.innerHTML='<div class="note-tag">Précision</div><p class="note-text" data-ph="Complément, remarque, source…"></p>';
       body.appendChild(nb);
       const p=nb.querySelector('.note-text');
-      const sel=window.getSelection(),rg=document.createRange();
-      rg.setStart(p,0);rg.collapse(true);sel.removeAllRanges();sel.addRange(rg);
+      try{
+        const sel=window.getSelection(),rg=document.createRange();
+        rg.setStart(p,0);rg.collapse(true);sel.removeAllRanges();sel.addRange(rg);
+      }catch(err){}
       return;
     }
     const t=e.target.closest('[data-t]');
     if(t){
-      const a=$('#audio-el');
-      if(!a.src){toast('Aucun audio relié à ce document.','warn');return}
+      if(!hasAudio()){toast('Aucun audio relié à ce document.','warn');return}
       const ms=+t.dataset.t;
-      if(isFinite(ms)){
-        a.currentTime=Math.min(ms/1000,(isFinite(a.duration)&&a.duration>0?a.duration:1e9)-.05);
-        a.play();$('#pl-play').innerHTML=icon('pause',20);vibrate(8);
-      }
+      if(isFinite(ms)){seekGlobal(ms,true);vibrate(8)}
     }
   });
   $('#doc-body').addEventListener('input',debounce(()=>{
@@ -3247,23 +3448,24 @@ function wire(){
     state.current.docHTML=$('#doc-body').innerHTML;
     const h=$('#doc-body').querySelector('.doc-title');
     if(h){const t=h.textContent.trim();if(t)state.current.title=t}
-    dbPut('sessions',state.current).then(flashSaved);
-  },800));
+    saveSession(state.current).then(flashSaved).catch(()=>{});
+  },900));
   $('#btn-regen').addEventListener('click',async()=>{
+    if(!state.current)return;
     const ok=await confirmDialog({title:'Régénérer le document ?',body:'Le document actuel sera remplacé par une nouvelle analyse locale de la transcription brute. Pour un résumé rédigé par IA, préférez « Rédiger le résumé avec l\u2019IA » dans le menu ⋯.',ok:'Régénérer',danger:true});
     if(!ok)return;
     const segs=parseRaw($('#raw-text').value);
     if(!segs.length){toast('La transcription est vide — rien à régénérer.','warn');return}
     state.current.segments=segs;
-    await dbPut('sessions',state.current);
+    await saveSession(state.current);
     composeAndShow(state.current);
   });
   $('#btn-menu').addEventListener('click',()=>{
     const s=state.current;
+    if(!s)return;
     const items=[];
-    if(s&&s.segments&&s.segments.length){
+    if(s.segments&&s.segments.length){
       items.push({icon:'spark',label:'Rédiger le résumé avec l\u2019IA',fn:async()=>{
-        if(!s)return;
         if(s.docHTML){
           const ok=await confirmDialog({title:'Rédiger le résumé IA ?',body:'Le document actuel — y compris vos éditions — sera remplacé par une nouvelle version rédigée par l\u2019IA.',ok:'Rédiger',danger:true});
           if(!ok)return;
@@ -3276,7 +3478,6 @@ function wire(){
         await composeAndShow(state.current);
       }});
       items.push({icon:'ext',label:'Copier le prompt de résumé (Z.ai, ChatGPT…)',fn:async()=>{
-        if(!s)return;
         const t=(s.type==='cours'?AI_SYS_COURS:AI_SYS)+'\n\n'+mainPrompt(s,null);
         const ok=await copyText(t);
         toast(ok?'Prompt complet copié ('+wordCount(t)+' mots) — collez-le dans l\u2019assistant de votre choix.':'Copie impossible — sélectionnez le texte manuellement.','info',3600);
@@ -3286,20 +3487,17 @@ function wire(){
         const ok=await copyText(t);
         toast(ok?'Transcription copiée — '+wordCount(t)+' mots.':'Copie impossible.','info',2600);
       }});
-      items.push({icon:'spark',label:'Importer la réponse IA (coller)',fn:()=>{importAIReply(s)}});
+      items.push({icon:'spark',label:'Importer la réponse IA (coller)',fn:()=>importAIReply(s)});
     }
-	if(state.audioBlob){
-      items.push({icon:'chip',label:'Découper l\u2019audio (pour transcription légère)',fn:()=>{
-        askSplitAudio(s);
-      }});
-    }
-    if(state.audioBlob){
+    if(hasAudio()){
+      if(AUD.parts.length===1)items.push({icon:'chip',label:'Découper l\u2019audio (imports volumineux)',fn:()=>askSplitAudio(s)});
       items.push({icon:'cloud',label:'Transcrire avec Whisper (qualité max)',fn:async()=>{
         if(!state.current)return;
         const ok=await confirmDialog({title:'Re-transcrire l\u2019enregistrement ?',body:'La transcription et le document actuels seront remplacés par une nouvelle transcription Whisper.',ok:'Transcrire',danger:true});
         if(!ok)return;
         const done=await runApiTranscription(state.current);
-        if(done)await runAIDraft(state.current);
+        if(done&&AI.ready)await runAIDraft(state.current);
+        else if(done)await composeAndShow(state.current);
       }});
       items.push({icon:'chip',label:'Transcrire sur l\u2019appareil (hors ligne)',fn:async()=>{
         if(!state.current)return;
@@ -3317,9 +3515,11 @@ function wire(){
       {icon:'trash',label:'Supprimer l\u2019enregistrement',danger:true,fn:async()=>{
         const ok=await confirmDialog({title:'Supprimer l\u2019enregistrement ?',body:'L\u2019audio, la transcription et le document seront définitivement supprimés.',ok:'Supprimer',danger:true});
         if(!ok||!state.current)return;
-        await dbDel('sessions',state.current.id);await dbDel('audio',state.current.id);
-        if(state.audioUrl){URL.revokeObjectURL(state.audioUrl);state.audioUrl=null}
+        const id=state.current.id;
+        await deleteSession(id);
+        releaseAudio();
         const a=$('#audio-el');a.pause();a.removeAttribute('src');a.load();
+        state.current=null;
         toast('Enregistrement supprimé.','info');show('home');refreshHome();
       }}
     );
@@ -3330,15 +3530,19 @@ function wire(){
 /* ==================== SUGGESTIONS DE NOM ==================== */
 const SUGGEST=['Cours de droit — chapitre 4','Réunion d\u2019équipe produit','Entretien de mémoire','Conférence du samedi','TD d\u2019économie n°7','Point hebdo avec l\u2019équipe'];
 let sugI=0;
-setInterval(()=>{const i=$('#rec-title');if(i&&!i.value)i.placeholder=SUGGEST[sugI++%SUGGEST.length]},3400);
+setInterval(()=>{const i=$('#rec-title');if(i&&!i.value&&document.body.dataset.view==='home')i.placeholder=SUGGEST[sugI++%SUGGEST.length]},3400);
 
 /* ==================== DÉMARRAGE ==================== */
 (async function init(){
   wire();wireLib();wirePlayer();wireSettings();wireDim();
   setupSW();
+  /* Conservation permanente : sans cela, iOS peut effacer l'IndexedDB
+     du site après quelques jours sans visite. */
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
   updateApiPill();updateHomeBanner();
   await refreshHome();
   show('home');
+  recoverDraft();
 })();
 </script>
 </body>
