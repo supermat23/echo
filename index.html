@@ -98,8 +98,21 @@ body[data-view="rec"] #topbar{display:none}
 .lib-title{font:600 17px var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lib-meta{font:500 10px var(--mono);color:var(--muted);letter-spacing:.06em;margin-top:3px;text-transform:uppercase}
 .lib-type{flex:none;font:600 9px var(--mono);letter-spacing:.14em;border:1px solid var(--line-strong);border-radius:999px;padding:4px 8px;color:var(--muted)}
-.lib-del{flex:none;width:34px;height:34px;border-color:var(--line)}
-.lib-del:active{color:var(--orange)}
+.lib-more{flex:none;width:40px;height:40px;border-color:var(--line)}
+.lib-more:active{color:var(--orange)}
+.lib-tools{flex:none;margin-left:auto;width:38px;height:38px}
+.lib-badge{display:inline-flex;align-items:center;gap:4px;font:500 9.5px var(--mono);letter-spacing:.08em;color:var(--green);margin-top:4px}
+.folder-bar{display:flex;gap:8px;overflow-x:auto;padding:2px 0 14px;margin:0 -18px;padding-left:18px;padding-right:18px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.folder-bar::-webkit-scrollbar{display:none}
+.fchip{flex:none;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border:1.5px solid var(--line-strong);border-radius:999px;font:600 13px var(--sans);color:var(--muted);background:var(--surface);white-space:nowrap}
+.fchip.on{border-color:var(--orange);background:var(--orange-dim);color:var(--orange)}
+.fchip .fn{font:500 10px var(--mono);opacity:.7}
+.fchip.add{border-style:dashed;color:var(--green);border-color:rgba(74,222,128,.4)}
+.qa{padding:11px 0;border-top:1px dashed var(--line)}
+.qa:first-child{border-top:none;padding-top:2px}
+.qa-q{font:600 15px/1.5 var(--serif)}
+.qa-a{font:italic 400 14px/1.55 var(--serif);color:var(--muted);margin-top:4px}
+.pack-note{margin-top:12px;font-size:12px;line-height:1.55;color:var(--muted)}
 .lib-confirm{flex:1;display:flex;align-items:center;gap:10px;font-size:14px}
 .lib-confirm .q{font-style:italic;font-family:var(--serif)}
 .btn-mini{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--line-strong);border-radius:8px;font:600 12px var(--sans)}
@@ -157,7 +170,7 @@ body[data-view="rec"] #topbar{display:none}
 .doc-title{font:600 clamp(25px,6.5vw,32px)/1.12 var(--serif);letter-spacing:-.012em;margin:9px 0 12px}
 .doc-meta{display:flex;flex-wrap:wrap;gap:4px 14px;font:500 10px var(--mono);color:var(--muted);letter-spacing:.09em;text-transform:uppercase}
 .doc-lead{font:italic 400 16px/1.65 var(--serif);color:var(--muted);margin-top:18px}
-.sec{border-top:1px solid var(--line);padding:22px 0 20px}
+.sec{border-top:1px solid var(--line);padding:22px 0 20px;content-visibility:auto;contain-intrinsic-size:auto 420px}
 .doc-head + .sec{border-top:none;padding-top:14px}
 .sec-head{display:flex;align-items:baseline;gap:11px}
 .sec-n{font:600 10.5px var(--mono);color:var(--orange);letter-spacing:.1em;min-width:26px}
@@ -194,7 +207,7 @@ body[data-view="rec"] #topbar{display:none}
 .tr-lazy summary::before{content:"";width:7px;height:7px;border-right:1.5px solid var(--orange);border-bottom:1.5px solid var(--orange);transform:rotate(-45deg);transition:transform .2s}
 .tr-lazy[open] summary::before{transform:rotate(45deg)}
 .tr-lines{margin-top:4px}
-.tr-line{display:flex;gap:14px;padding:8px 0;border-top:1px solid rgba(237,238,232,.05)}
+.tr-line{display:flex;gap:14px;padding:8px 0;border-top:1px solid rgba(237,238,232,.05);content-visibility:auto;contain-intrinsic-size:auto 38px}
 .tr-line:first-child{border-top:none}
 .tr-t{min-width:46px;flex:none;text-align:right}
 .tr-text{font:400 14.5px/1.55 var(--serif)}
@@ -310,6 +323,16 @@ body[data-view="rec"] #topbar{display:none}
 .bs-item{display:flex;align-items:center;gap:14px;width:100%;padding:14px 4px;font:500 14.5px var(--sans);border-top:1px solid var(--line);text-align:left;color:var(--text)}
 .bs-item svg{color:var(--orange)}
 .bs-item.danger{color:var(--orange)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media(max-width:400px){
+  #app{padding-left:14px;padding-right:14px}
+  .folder-bar{margin:0 -14px;padding-left:14px;padding-right:14px}
+  .doc-actions{gap:7px}
+  .doc-actions .btn-ghost{padding:0 11px}
+  #btn-edit span{display:none}
+  .sheet{padding:26px 16px}
+  .new-rec{padding:18px 16px}
+}
 @media(min-width:880px){.home-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:44px;align-items:start}.library{margin-top:52px}}
 @media print{
   @page{margin:14mm 13mm}
@@ -320,6 +343,7 @@ body[data-view="rec"] #topbar{display:none}
   #app #view-doc{display:block!important}
   .sheet{border:none;background:#fff;padding:0}
   .tr-lazy summary{display:none!important}
+  .sec,.tr-line{content-visibility:visible!important}
   .doc-title,.sec-title,.sub-head{color:#111}
   .sheet-body,.sec-body p,.keylist li,.tr-text,.doc-lead,.sec-note{color:#222!important}
   .doc-lead,.sec-note,.notion-quote,.notion-meta,.doc-eyebrow{color:#666!important}
@@ -384,8 +408,11 @@ body[data-view="rec"] #topbar{display:none}
       </div>
     </div>
     <section class="library">
-      <div class="lib-head"><h2>Vos enregistrements</h2><span id="lib-count" class="mono"></span></div>
+      <div class="lib-head"><h2>Vos enregistrements</h2><span id="lib-count" class="mono"></span>
+        <button class="icon-btn lib-tools" id="lib-tools" title="Dossiers, sauvegarde"></button></div>
+      <div class="folder-bar" id="folder-bar"></div>
       <div id="lib-list"></div>
+      <input id="file-pack" type="file" accept=".echo,application/octet-stream" hidden>
     </section>
   </section>
 
@@ -532,6 +559,16 @@ body[data-view="rec"] #topbar{display:none}
     </div>
 
     <div class="set-group">
+      <p class="set-title">Sauvegarde &amp; transfert</p>
+      <p class="set-intro" style="margin-top:8px">Un fichier <span class="mono">.echo</span> rassemble vos enregistrements, leurs documents, vos dossiers et l'audio. Il sert à changer d'appareil ou à garder une copie hors de l'application.</p>
+      <div class="key-actions">
+        <button class="btn-primary" id="set-export">Exporter tout</button>
+        <button class="btn-ghost" id="set-import">Importer une sauvegarde</button>
+      </div>
+      <p class="pack-note">L'import n'écrase jamais rien : les enregistrements déjà présents sont conservés et les doublons ignorés.</p>
+    </div>
+
+    <div class="set-group">
       <p class="set-title">Application installable</p>
       <p class="set-intro" style="margin-top:8px">Sur Android (Chrome) : menu ⋯ puis «&nbsp;Ajouter à l'écran d'accueil&nbsp;». L'application s'ouvre ensuite hors ligne si un <span class="mono">sw.js</span> est présent à côté de la page.</p>
       <p class="set-status" id="pwa-status"></p>
@@ -611,6 +648,7 @@ dots:'<circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle 
 refresh:'<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4.5h-4.5"/>',
 ext:'<path d="M14 4.5h5.5V10M19.5 4.5 12 12"/><path d="M11 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19h11a1.5 1.5 0 0 0 1.5-1.5V13"/>',
 bookmark:'<path d="M7 4.5h10v15l-5-3.5-5 3.5z"/>',
+folder:'<path d="M4.5 18.5v-13h5l1.8 2.4h8.2v10.6z"/>',
 book:'<path d="M12 6.5C10.5 5 8 4.4 5.5 4.7v13.5c2.5-.3 5 .3 6.5 1.8 1.5-1.5 4-2.1 6.5-1.8V4.7C16 4.4 13.5 5 12 6.5ZM12 6.5v13.5"/>',
 users:'<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M15.5 5.8a3.2 3.2 0 0 1 0 5.4M17.3 14.9c1.7.7 2.8 2.3 3.2 4.6"/>',
 chat:'<path d="M4.5 12a7.5 7 0 0 1 7.5-7 7.5 7 0 0 1 7.5 7 7.5 7 0 0 1-7.5 7c-.9 0-1.8-.1-2.6-.4L5 20.2l1.2-3A6.9 6.9 0 0 1 4.5 12Z"/>',
@@ -666,24 +704,25 @@ function confirmDialog({title,body,ok='Confirmer',cancel='Annuler',danger=false}
     ov.onclick=()=>close(false);
   });
 }
-function openSheet(title,items){
+function openSheet(title,items,onCancel){
   const root=$('#modal-root');
   const g=++_modalGen;
+  let chosen=false;
   root.innerHTML=`<div class="sheet-overlay"></div><div class="bsheet"></div>`;
   const ov=root.querySelector('.sheet-overlay'),bs=root.querySelector('.bsheet');
   bs.innerHTML=`<div class="bsheet-head">${esc(title)}</div>`+items.map((it,i)=>
     `<button class="bs-item ${it.danger?'danger':''}" data-i="${i}">${icon(it.icon,19)}<span>${esc(it.label)}</span></button>`).join('');
   requestAnimationFrame(()=>{ov.classList.add('in');bs.classList.add('in')});
   const close=()=>{ov.classList.remove('in');bs.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},300)};
-  ov.onclick=close;
-  bs.querySelectorAll('.bs-item[data-i]').forEach(b=>b.onclick=()=>{const it=items[+b.dataset.i];close();setTimeout(()=>it.fn&&it.fn(),120)});
+  ov.onclick=()=>{close();if(!chosen&&onCancel)try{onCancel()}catch(e){}};
+  bs.querySelectorAll('.bs-item[data-i]').forEach(b=>b.onclick=()=>{chosen=true;const it=items[+b.dataset.i];close();setTimeout(()=>it.fn&&it.fn(),120)});
 }
 
 /* ==================== STOCKAGE INDEXEDDB ====================
    v2 : ajout d'un magasin « meta » (fiches légères) pour que l'accueil
    n'ait plus à charger toutes les transcriptions en mémoire. */
-const DB_NAME='echo-db',DB_VER=2;let _db=null,useMem=false;
-const MEM={sessions:new Map(),audio:new Map(),meta:new Map()};
+const DB_NAME='echo-db',DB_VER=3;let _db=null,useMem=false;
+const MEM={sessions:new Map(),audio:new Map(),meta:new Map(),folders:new Map()};
 async function db(){
   if(_db)return _db;
   try{_db=await new Promise((res,rej)=>{
@@ -691,7 +730,8 @@ async function db(){
     r.onupgradeneeded=()=>{const d=r.result;
       if(!d.objectStoreNames.contains('sessions'))d.createObjectStore('sessions',{keyPath:'id'});
       if(!d.objectStoreNames.contains('audio'))d.createObjectStore('audio',{keyPath:'id'});
-      if(!d.objectStoreNames.contains('meta'))d.createObjectStore('meta',{keyPath:'id'})};
+      if(!d.objectStoreNames.contains('meta'))d.createObjectStore('meta',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('folders'))d.createObjectStore('folders',{keyPath:'id'})};
     r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('blocked'))
   })}catch(e){useMem=true}
   return _db;
@@ -713,7 +753,7 @@ function storageError(e){
 }
 /* Fiche légère utilisée par la bibliothèque */
 const metaOf=s=>({id:s.id,title:s.title,type:s.type,createdAt:s.createdAt,durationMs:s.durationMs||0,
-  imported:!!s.imported,hasDoc:!!s.docHTML,parts:(s.parts||[]).length,
+  imported:!!s.imported,hasDoc:!!s.docHTML,parts:(s.parts||[]).length,folderId:s.folderId||null,
   words:s.words||(s.segments?wordCount(s.segments.map(x=>x.text).join(' ')):0)});
 async function saveSession(s){
   try{
@@ -724,6 +764,91 @@ async function saveSession(s){
 }
 async function deleteSession(id){
   await dbDel('sessions',id);await dbDel('meta',id);await dbDel('audio',id);
+}
+
+/* ==================== DOSSIERS ==================== */
+const FOLDERS={list:[],current:null};      /* current : null = tout afficher */
+async function loadFolders(){
+  let l=[];
+  try{l=await dbAll('folders')}catch(e){}
+  FOLDERS.list=(l||[]).filter(f=>f&&f.id).sort((a,b)=>String(a.name).localeCompare(String(b.name),'fr',{numeric:true}));
+  if(FOLDERS.current&&FOLDERS.current!=='__none'&&!FOLDERS.list.some(f=>f.id===FOLDERS.current))FOLDERS.current=null;
+  return FOLDERS.list;
+}
+const folderName=id=>{const f=FOLDERS.list.find(x=>x.id===id);return f?f.name:''};
+/* Un nouvel enregistrement atterrit dans le dossier consulté. */
+const activeFolder=()=>(FOLDERS.current&&FOLDERS.current!=='__none')?FOLDERS.current:null;
+async function createFolder(name){
+  const f={id:uid(),name:String(name).trim().slice(0,60)||'Dossier',createdAt:Date.now()};
+  try{await dbPut('folders',f)}catch(e){storageError(e);return null}
+  await loadFolders();
+  return f;
+}
+async function removeFolder(id){
+  /* les enregistrements ne sont jamais supprimés : ils remontent à la racine */
+  const metas=(await dbAll('meta')).filter(m=>m&&m.folderId===id);
+  for(const m of metas){
+    const s=await dbGet('sessions',m.id);
+    if(s){s.folderId=null;await saveSession(s)}
+    else{m.folderId=null;await dbPut('meta',m)}
+  }
+  await dbDel('folders',id);
+  if(FOLDERS.current===id)FOLDERS.current=null;
+  await loadFolders();
+  return metas.length;
+}
+async function setSessionFolder(id,folderId){
+  const s=await dbGet('sessions',id);
+  if(s){s.folderId=folderId||null;await saveSession(s);if(state.current&&state.current.id===id)state.current.folderId=s.folderId}
+  else{const m=await dbGet('meta',id);if(m){m.folderId=folderId||null;await dbPut('meta',m)}}
+}
+
+/* ==================== SAISIE MODALE ==================== */
+function promptDialog({title,body,label,value='',placeholder='',ok='Enregistrer',maxlength=90}){
+  return new Promise(res=>{
+    const root=$('#modal-root');
+    const g=++_modalGen;
+    root.innerHTML=`<div class="modal-overlay"></div>
+      <div class="modal"><h3>${esc(title)}</h3>${body?`<p>${esc(body)}</p>`:''}
+      ${label?`<span class="field-label" style="margin-top:14px">${esc(label)}</span>`:''}
+      <input id="pd-input" class="key-input" type="text" maxlength="${maxlength}" style="margin-top:8px;width:100%" value="${esc(value)}" placeholder="${esc(placeholder)}" autocomplete="off">
+      <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
+      <button class="btn-primary" data-yes="1" style="height:44px">${esc(ok)}</button></div></div>`;
+    const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal'),inp=m.querySelector('#pd-input');
+    requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in');try{inp.focus();inp.select()}catch(e){}});
+    const close=v=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250);res(v)};
+    m.querySelector('[data-no]').onclick=()=>close(null);
+    ov.onclick=()=>close(null);
+    const val=()=>{const v=inp.value.trim();if(!v){inp.focus();return}close(v)};
+    m.querySelector('[data-yes]').onclick=val;
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();val()}});
+  });
+}
+/* Renommer : met aussi à jour le titre affiché dans le document déjà composé. */
+async function renameSession(id,currentTitle){
+  const v=await promptDialog({title:'Renommer l\u2019enregistrement',label:'Nouveau nom',value:currentTitle||'',ok:'Renommer'});
+  if(!v)return false;
+  const s=await dbGet('sessions',id);
+  if(!s){toast('Enregistrement introuvable.','warn');return false}
+  s.title=v;
+  if(s.docHTML){
+    const tmp=document.createElement('div');
+    tmp.innerHTML=s.docHTML;
+    const h=tmp.querySelector('.doc-title');
+    if(h){h.textContent=v;s.docHTML=tmp.innerHTML}
+  }
+  await saveSession(s);
+  if(state.current&&state.current.id===id){
+    state.current.title=v;
+    state.current.docHTML=s.docHTML;
+    if(document.body.dataset.view==='doc'){
+      const h=$('#doc-body').querySelector('.doc-title');
+      if(h)h.textContent=v;
+    }
+  }
+  await refreshHome();
+  toast('Renommé en « '+v+' ».','ok');
+  return true;
 }
 
 /* ==================== CONFIGURATION ==================== */
@@ -1275,7 +1400,7 @@ function buildAIDocHTML(D,s){
     }).join(''),null,'notions');
   }
   const qr=(Array.isArray(D.questions_revision)?D.questions_revision:[]).filter(q=>q&&q.question);
-  if(qr.length)sec('Questions de révision',qr.map(q=>`<div style="padding:10px 0;border-top:1px dashed var(--line)"><p style="font:600 15px var(--serif)">${esc(q.question)}</p><p style="font:italic 400 14px var(--serif);color:var(--muted);margin-top:4px">Réponse : ${esc(q.reponse||'—')}</p></div>`).join(''),null,'resume');
+  if(qr.length)sec('Questions de révision',qr.map(q=>`<div class="qa"><p class="qa-q">${esc(q.question)}</p><p class="qa-a">Réponse : ${esc(q.reponse||'—')}</p></div>`).join(''),null,'resume');
   const pv=(Array.isArray(D.passages_a_verifier)?D.passages_a_verifier:[]).filter(p=>p&&(p.probleme||p.depuis));
   if(pv.length)sec('Passages à vérifier',`<ul class="keylist">${pv.map(p=>{const t=parseStamp(p.depuis);return `<li>${t!=null?ktHTML(t):''}${esc(p.probleme||'passage douteux')}</li>`}).join('')}</ul>`,null,'resume');
   if(s.marks&&s.marks.length)
@@ -1993,7 +2118,7 @@ async function importAudioFiles(files){
   const totalMs=durs.reduce((a,b)=>a+b,0);
   const id=uid();
   const sess={id,title:det.title,type:det.type,createdAt:Date.now(),durationMs:totalMs,segments:[],marks:[],
-    docHTML:null,audioExt:extFor(first,first.name,'')||'mp3',imported:true,
+    docHTML:null,audioExt:extFor(first,first.name,'')||'mp3',imported:true,folderId:activeFolder(),
     parts:files.map((f,i)=>({name:f.name,size:f.size,durMs:durs[i]||0}))};
   try{
     if(files.length===1)await dbPut('audio',{id,blob:files[0],durMs:durs[0]||0});
@@ -2038,8 +2163,8 @@ function renderDocBody(s){
   /* transcription courte : on la déplie et on la remplit tout de suite */
   const d=b.querySelector('.tr-lazy');
   if(d&&s.segments&&s.segments.length&&s.segments.length<=250){d.open=true;fillLazy(b,s.segments)}
-  $$('#doc-body .doc-head, #doc-body .sec').forEach((el,i)=>{
-    el.style.setProperty('--i',Math.min(i,10));el.classList.remove('reveal');void el.offsetWidth;el.classList.add('reveal');
+  $$('#doc-body .doc-head, #doc-body .sec').slice(0,8).forEach((el,i)=>{
+    el.style.setProperty('--i',i);el.classList.add('reveal');
   });
   $('#raw-text').value=dumpRaw(s.segments||[]);
 }
@@ -2282,7 +2407,7 @@ async function startSession(){
   setStateUI(false);
   show('rec');vibrate(12);
   requestAnimationFrame(()=>{fitCanvas()});
-  frame();grabWakeLock();startKeepAlive(title);
+  frame();startWatchdog();grabWakeLock();startKeepAlive(title);
   dimOff();dimArm();
   toast('Enregistrement démarré — sauvegarde automatique toutes les 5 minutes.','info',3200);
   btn.disabled=false;
@@ -2305,9 +2430,20 @@ window.addEventListener('resize',()=>{if(rec)fitCanvas()});
 function frame(){
   if(!rec||rec.status==='stopped')return;
   rec.lastFrame=performance.now();
+  const dimOn=$('#dim').classList.contains('on');
+  /* Le chronomètre n'est réécrit que lorsque la seconde change. */
+  const tick=()=>{const t=fmtClock(nowMs());
+    if(t!==rec.lastTs){rec.lastTs=t;$('#rec-timer').textContent=t;if(dimOn)$('#dim-timer').textContent=t}};
+  /* Écran noir, onglet en arrière-plan ou pause : le tracé n'est pas visible
+     ou ne bouge plus. On passe de 60 rafraîchissements par seconde à 1. */
+  if(dimOn||document.visibilityState!=='visible'||rec.status!=='recording'){
+    clearTimeout(rec.slowT);
+    rec.slowT=setTimeout(frame,1000);
+    tick();
+    return;
+  }
   rec.raf=requestAnimationFrame(frame);
-  if($('#dim').classList.contains('on'))$('#dim-timer').textContent=fmtClock(nowMs());
-  $('#rec-timer').textContent=fmtClock(nowMs());
+  tick();
   if(rec.analyser&&rec.status==='recording'){
     rec.analyser.getByteTimeDomainData(rec.buf);
     let s=0;for(let i=0;i<rec.buf.length;i++){const v=(rec.buf[i]-128)/128;s+=v*v}
@@ -2343,10 +2479,12 @@ function setPause(p){
     rec.status='paused';
     rec.accum+=performance.now()-rec.activeStart;rec.activeStart=null;
     dimOff();
+    drawWave();                                 /* dernier tracé, puis repos */
   }else{
     try{if(cur&&cur.mr&&cur.mr.state==='paused')cur.mr.resume()}catch(e){}
     rec.status='recording';rec.activeStart=performance.now();
     dimArm();
+    clearTimeout(rec.slowT);cancelAnimationFrame(rec.raf);frame();
   }
   setStateUI(p);
 }
@@ -2355,7 +2493,7 @@ async function finalize(){
   const dur=nowMs();
   rec.status='stopped';
   $('#btn-pause').disabled=true;$('#btn-stop').disabled=true;$('#btn-mark').disabled=true;
-  cancelAnimationFrame(rec.raf);
+  cancelAnimationFrame(rec.raf);clearTimeout(rec.slowT);stopWatchdog();
   clearInterval(rec.segTimer);
   const cur=rec.parts[rec.parts.length-1];
   if(cur&&!cur.closed)await closePart(cur,dur,false);     /* 1) recorder d'abord */
@@ -2374,7 +2512,7 @@ async function finalize(){
   const id=uid();
   const ext=blobExt(parts[0].blob);
   const sess={id,title:title||'Enregistrement',type,createdAt:Date.now(),durationMs:dur,segments:[],marks,
-    docHTML:null,audioExt:ext,
+    docHTML:null,audioExt:ext,folderId:activeFolder(),
     parts:parts.map((p,i)=>({name:'partie-'+String(i+1).padStart(2,'0'),size:p.blob.size,durMs:p.durMs}))};
   try{
     if(parts.length===1)await dbPut('audio',{id,blob:parts[0].blob,durMs:parts[0].durMs});
@@ -2400,7 +2538,7 @@ async function finalize(){
 async function discardRecording(){
   if(!rec)return;
   rec.status='stopped';
-  cancelAnimationFrame(rec.raf);
+  cancelAnimationFrame(rec.raf);clearTimeout(rec.slowT);stopWatchdog();
   clearInterval(rec.segTimer);
   const cur=rec.parts[rec.parts.length-1];
   try{if(cur&&cur.mr&&cur.mr.state!=='inactive')cur.mr.stop()}catch(e){}
@@ -2432,7 +2570,7 @@ async function recoverDraft(){
   const id=uid();
   const sess={id,title:meta.title||'Enregistrement récupéré',type:meta.type||'cours',
     createdAt:meta.startedAt||Date.now(),durationMs:ms,segments:[],marks:meta.marks||[],
-    docHTML:null,audioExt:blobExt(parts[0].blob),
+    docHTML:null,audioExt:blobExt(parts[0].blob),folderId:activeFolder(),
     parts:parts.map((p,i)=>({name:'partie-'+String(i+1).padStart(2,'0'),size:p.blob.size,durMs:p.durMs}))};
   try{
     if(parts.length===1)await dbPut('audio',{id,blob:parts[0].blob,durMs:parts[0].durMs});
@@ -2493,7 +2631,11 @@ function dimArm(){
 }
 function dimOff(){
   clearTimeout(dimTimer);dimTimer=null;
+  const was=$('#dim').classList.contains('on');
   $('#dim').classList.remove('on');
+  if(was&&rec&&rec.status!=='stopped'){
+    clearTimeout(rec.slowT);cancelAnimationFrame(rec.raf);frame();
+  }
 }
 function wireDim(){
   $('#dim').addEventListener('click',()=>{dimOff();dimArm()});
@@ -2516,11 +2658,16 @@ document.addEventListener('visibilitychange',()=>{
   }
 });
 document.addEventListener('visibilitychange',()=>{if(rec&&document.visibilityState!=='visible')rec.wasHidden=true});
-setInterval(()=>{
-  if(rec&&rec.status!=='stopped'&&performance.now()-(rec.lastFrame||0)>3500){
-    cancelAnimationFrame(rec.raf);frame();
-  }
-},2000);
+let watchdog=null;
+function startWatchdog(){
+  if(watchdog)return;
+  watchdog=setInterval(()=>{
+    if(rec&&rec.status!=='stopped'&&performance.now()-(rec.lastFrame||0)>3500){
+      clearTimeout(rec.slowT);cancelAnimationFrame(rec.raf);frame();
+    }
+  },2500);
+}
+function stopWatchdog(){clearInterval(watchdog);watchdog=null}
 window.addEventListener('beforeunload',e=>{if(rec&&rec.status!=='stopped'){e.preventDefault();e.returnValue=''}});
 
 /* ==================== EXPORTS ==================== */
@@ -2779,10 +2926,19 @@ function buildPDF(sel,s,fonts){
           const links=[...el.querySelectorAll('.notion-links a')].map(a=>a.getAttribute('href')).filter(Boolean);
           if(links.length)para(links.map((l,i)=>({t:(i?'   ·   ':'')+l,c:GRAY})),{size:8,lead:11});
           y+=8;
+        }else if(el.classList.contains('qa')){
+          const q=el.querySelector('.qa-q'),r=el.querySelector('.qa-a');
+          para([{t:'?  ',c:ACCENT,s:'bold'},{t:q?textOf(q):textOf(el),s:'bold'},{t:''}],{hang:12});
+          if(r){para([{t:textOf(r),c:GRAY}],{indent:12,hang:12});}
+          y+=7;
         }else if(el.classList.contains('note-block')){
           const nt=el.querySelector('.note-text');
           para([{t:'Précision — ',s:'bold'},{t:(nt&&nt.textContent.trim())||textOf(el)}]);
           y+=5;
+        }else{
+          /* repli : tout bloc non reconnu est rendu en texte plutôt qu'ignoré */
+          const t=textOf(el);
+          if(t){para([{t}]);y+=5}
         }
       });
     }
@@ -2842,10 +2998,18 @@ function buildTXT(sel,s){
           const links=[...el.querySelectorAll('.notion-links a')].map(a=>a.getAttribute('href')).filter(Boolean);
           if(links.length)L.push('    Réf. : '+links.join('  ·  '));
           L.push('');
+        }else if(el.classList.contains('qa')){
+          const q=el.querySelector('.qa-q'),r=el.querySelector('.qa-a');
+          L.push('? '+(q?textOf(q):textOf(el)));
+          if(r)L.push('    '+textOf(r));
+          L.push('');
         }else if(el.classList.contains('note-block')){
           const nt=el.querySelector('.note-text');
           L.push('Précision — '+((nt&&nt.textContent.trim())||textOf(el)));
           L.push('');
+        }else{
+          const t=textOf(el);
+          if(t){L.push(t);L.push('')}
         }
       });
     }
@@ -2904,6 +3068,9 @@ main{max-width:720px;margin:0 auto;background:#1A1E18;padding:38px 30px;border-l
 .notion-links a{color:#4ADE80}
 .note-block{background:rgba(255,122,26,.08);border-left:3px solid #FF7A1A;padding:12px 14px;margin:12px 0}
 .note-tag{font:600 9px monospace;letter-spacing:.18em;text-transform:uppercase;color:#FF7A1A}
+.qa{padding:11px 0;border-top:1px dashed rgba(237,238,232,.15)}
+.qa-q{font-size:16px;font-weight:600;margin:0}
+.qa-a{font-style:italic;color:#969C8F;margin:4px 0 0}
 summary{display:none}
 .tr-line{display:flex;gap:12px;padding:7px 0;border-top:1px solid rgba(237,238,232,.06);font-size:14px;line-height:1.5}
 .tr-t{min-width:44px;text-align:right;font:11px monospace;color:#FF7A1A}
@@ -3042,6 +3209,139 @@ async function doSplitAudio(sess,targetMb){
   }
 }
 
+/* ==================== SAUVEGARDE .echo (EXPORT / IMPORT) ====================
+   Conteneur binaire : 8 octets de signature, version, longueur d'en-tête,
+   en-tête JSON (sessions + dossiers + table des morceaux audio), puis les
+   blobs bruts concaténés. Rien n'est jamais chargé entièrement en mémoire :
+   à l'export les blobs sont référencés, à l'import ils sont relus par tranches. */
+const PACK_MAGIC='ECHOPACK',PACK_VER=1;
+async function buildPack(ids,withAudio,onStep){
+  const blobs=[],sessions=[];let off=0,i=0;
+  for(const id of ids){
+    const s=await dbGet('sessions',id);
+    if(!s)continue;
+    i++;if(onStep)onStep(i,ids.length,s.title);
+    const rec=Object.assign({},s);
+    delete rec.trProgress;
+    const audio=[];
+    if(withAudio){
+      for(const r of await resolveAudioParts(s)){
+        audio.push({name:r.name||'',durMs:r.durMs||0,type:r.blob.type||'',off,len:r.blob.size});
+        blobs.push(r.blob);off+=r.blob.size;
+      }
+    }
+    rec.audio=audio;
+    sessions.push(rec);
+  }
+  const header={app:'Écho',kind:'echo-pack',version:PACK_VER,createdAt:Date.now(),withAudio:!!withAudio,
+    folders:FOLDERS.list.map(f=>({id:f.id,name:f.name,createdAt:f.createdAt})),sessions};
+  const hb=new TextEncoder().encode(JSON.stringify(header));
+  const pre=new Uint8Array(16),dv=new DataView(pre.buffer);
+  for(let k=0;k<8;k++)pre[k]=PACK_MAGIC.charCodeAt(k);
+  dv.setUint32(8,PACK_VER,true);dv.setUint32(12,hb.length,true);
+  return {blob:new Blob([pre,hb,...blobs],{type:'application/octet-stream'}),count:sessions.length};
+}
+async function readPack(file){
+  if(!file||file.size<17)throw new Error('fichier vide ou illisible');
+  const head=new Uint8Array(await file.slice(0,16).arrayBuffer());
+  let magic='';for(let i=0;i<8;i++)magic+=String.fromCharCode(head[i]);
+  if(magic!==PACK_MAGIC)throw new Error('ce fichier n\u2019est pas une sauvegarde Écho (.echo)');
+  const dv=new DataView(head.buffer);
+  const ver=dv.getUint32(8,true),hlen=dv.getUint32(12,true);
+  if(ver>PACK_VER)throw new Error('sauvegarde créée par une version plus récente de l\u2019application');
+  if(!hlen||16+hlen>file.size)throw new Error('en-tête corrompu');
+  const header=JSON.parse(new TextDecoder().decode(await file.slice(16,16+hlen).arrayBuffer()));
+  if(!header||header.kind!=='echo-pack')throw new Error('sauvegarde non reconnue');
+  return {header,base:16+hlen,file};
+}
+function packBusy(title,sub,iconName){
+  composerShow();
+  $('#composer-title').textContent=title;
+  $('#composer-sub').textContent=sub||'';
+  $('#ring-fg').style.strokeDashoffset=326.7;
+  $('#ring-core').innerHTML='<span class="spin">'+icon(iconName||'download',30)+'</span>';
+  $('#composer-note').textContent='Le fichier .echo contient les documents, les transcriptions, les dossiers et l\u2019audio.';
+  $('#composer-body').innerHTML='<div class="ai-stat"><p class="ai-phase" id="pk-phase">Préparation</p><p class="ai-detail" id="pk-detail"></p><div class="ai-bar"><i id="pk-bar"></i></div></div>';
+  return (a,b,r)=>{
+    const p=$('#pk-phase'),d=$('#pk-detail'),bar=$('#pk-bar');
+    if(p&&a)p.textContent=a;
+    if(d&&b!=null)d.textContent=b;
+    if(bar&&r!=null){bar.style.width=Math.max(0,Math.min(100,r*100)).toFixed(1)+'%';$('#ring-fg').style.strokeDashoffset=(326.7*(1-Math.min(1,r))).toFixed(1)}
+  };
+}
+async function exportPack(ids,fileName,withAudio,label){
+  if(!ids.length){toast('Rien à exporter.','warn');return}
+  const step=packBusy('Sauvegarde','' + (label||''),'download');
+  try{
+    const {blob,count}=await buildPack(ids,withAudio,(i,n,t)=>step('Assemblage '+i+' / '+n,t,i/n));
+    step('Écriture du fichier','',1);
+    await wait(120);
+    downloadBlob(blob,fileName);
+    composerHide();
+    toast(count+' enregistrement'+(count>1?'s':'')+' exporté'+(count>1?'s':'')+' — '+fmtMo(blob.size)+'.','ok',4200);
+  }catch(e){
+    composerHide();
+    toast('Export impossible : '+(e&&e.message?e.message:'erreur'),'warn',5200);
+  }
+}
+async function importPack(file){
+  let pack;
+  try{pack=await readPack(file)}
+  catch(e){toast('Import impossible : '+(e&&e.message?e.message:'erreur'),'warn',5600);return}
+  const H=pack.header;
+  const list=Array.isArray(H.sessions)?H.sessions.filter(x=>x&&x.id):[];
+  const fl=Array.isArray(H.folders)?H.folders.filter(x=>x&&x.id):[];
+  if(!list.length){toast('Cette sauvegarde ne contient aucun enregistrement.','warn');return}
+  const go=await confirmDialog({
+    title:'Importer la sauvegarde ?',
+    body:list.length+' enregistrement'+(list.length>1?'s':'')+(fl.length?' et '+fl.length+' dossier'+(fl.length>1?'s':''):'')+
+      (H.withAudio===false?' (sans audio)':'')+'. Vos enregistrements actuels sont conservés : aucun ne sera écrasé ni supprimé.',
+    ok:'Importer'});
+  if(!go)return;
+  const step=packBusy('Import de la sauvegarde',file.name,'upload');
+  let added=0,skipped=0,failed=0;
+  try{
+    await loadFolders();
+    const fmap=new Map();
+    for(const f of fl){
+      const same=FOLDERS.list.find(x=>x.id===f.id);
+      if(same){fmap.set(f.id,same.id);continue}
+      const byName=FOLDERS.list.find(x=>norm(x.name)===norm(f.name||''));
+      if(byName){fmap.set(f.id,byName.id);continue}
+      const nf={id:f.id,name:String(f.name||'Dossier').slice(0,60),createdAt:f.createdAt||Date.now()};
+      try{await dbPut('folders',nf);FOLDERS.list.push(nf);fmap.set(f.id,nf.id)}catch(e){}
+    }
+    const existing=new Set((await dbKeys('sessions')).map(String));
+    for(let i=0;i<list.length;i++){
+      const raw=list[i];
+      step('Enregistrement '+(i+1)+' / '+list.length,raw.title||'',(i+1)/list.length);
+      if(existing.has(String(raw.id))){skipped++;continue}
+      const audio=Array.isArray(raw.audio)?raw.audio:[];
+      const sess=Object.assign({},raw);
+      delete sess.audio;
+      sess.segments=Array.isArray(sess.segments)?sess.segments:[];
+      sess.marks=Array.isArray(sess.marks)?sess.marks:[];
+      sess.folderId=sess.folderId?(fmap.get(sess.folderId)||null):null;
+      const cut=a=>pack.file.slice(pack.base+a.off,pack.base+a.off+a.len,a.type||'application/octet-stream');
+      try{
+        if(audio.length===1)await dbPut('audio',{id:sess.id,blob:cut(audio[0]),durMs:audio[0].durMs||0});
+        else if(audio.length>1)await dbPut('audio',{id:sess.id,multi:audio.map(a=>({name:a.name,durMs:a.durMs||0,blob:cut(a)}))});
+        await saveSession(sess);
+        existing.add(String(sess.id));
+        added++;
+      }catch(e){failed++;storageError(e);if(/quota/i.test((e&&e.name||'')+(e&&e.message||'')))break}
+    }
+  }catch(e){
+    toast('Import interrompu : '+(e&&e.message?e.message:'erreur'),'warn',5200);
+  }
+  composerHide();
+  await refreshHome();
+  const bits=[added+' importé'+(added>1?'s':'')];
+  if(skipped)bits.push(skipped+' déjà présent'+(skipped>1?'s':''));
+  if(failed)bits.push(failed+' en échec');
+  toast(bits.join(' · '),added?'ok':'info',4600);
+}
+
 /* ==================== BIBLIOTHÈQUE ==================== */
 async function refreshHome(){
   let all=[];
@@ -3056,54 +3356,175 @@ async function refreshHome(){
   }
   all=all.filter(x=>x&&x.id).sort((a,b)=>b.createdAt-a.createdAt);
   state.sessions=all;
+  await loadFolders();
+  renderFolders(all);
   renderLib(all);
   updateHomeBanner();
 }
+function visibleSessions(all){
+  if(!FOLDERS.current)return all;
+  if(FOLDERS.current==='__none')return all.filter(s=>!s.folderId);
+  return all.filter(s=>s.folderId===FOLDERS.current);
+}
+function renderFolders(all){
+  const bar=$('#folder-bar');
+  if(!all.length&&!FOLDERS.list.length){bar.style.display='none';bar.innerHTML='';return}
+  bar.style.display='flex';
+  const counts=new Map();let none=0;
+  all.forEach(s=>{if(s.folderId)counts.set(s.folderId,(counts.get(s.folderId)||0)+1);else none++});
+  const chips=[`<button class="fchip${!FOLDERS.current?' on':''}" data-f="">Tous <span class="fn">${all.length}</span></button>`];
+  FOLDERS.list.forEach(f=>chips.push(
+    `<button class="fchip${FOLDERS.current===f.id?' on':''}" data-f="${f.id}">${icon('folder',14)}${esc(f.name)} <span class="fn">${counts.get(f.id)||0}</span></button>`));
+  if(FOLDERS.list.length&&none)chips.push(
+    `<button class="fchip${FOLDERS.current==='__none'?' on':''}" data-f="__none">Sans dossier <span class="fn">${none}</span></button>`);
+  chips.push(`<button class="fchip add" data-f="__new">${icon('plus',14)}Dossier</button>`);
+  bar.innerHTML=chips.join('');
+}
 function renderLib(all){
-  $('#lib-count').textContent=all.length?all.length+' enregistrement'+(all.length>1?'s':''):'';
+  const list=visibleSessions(all);
+  const cnt=$('#lib-count');
+  cnt.textContent=!all.length?'':(list.length===all.length
+    ? all.length+' enregistrement'+(all.length>1?'s':'')
+    : list.length+' sur '+all.length);
   const root=$('#lib-list');
-  if(!all.length){
-    root.innerHTML=`<div class="lib-empty">${icon('docic',22)}<span>Aucun enregistrement pour l'instant.<br>Enregistrez ou importez un audio — il apparaîtra ici avec son résumé, prêt à exporter.</span></div>`;
+  if(!list.length){
+    root.innerHTML=`<div class="lib-empty">${icon('docic',22)}<span>${all.length
+      ?'Ce dossier est vide.<br>Déplacez-y un enregistrement depuis son menu ⋯.'
+      :'Aucun enregistrement pour l\'instant.<br>Enregistrez ou importez un audio — il apparaîtra ici avec son résumé, prêt à exporter.'}</span></div>`;
     return;
   }
-  root.innerHTML=all.map(s=>`
+  const showBadge=!FOLDERS.current;
+  root.innerHTML=list.map(s=>`
     <div class="lib-item" data-id="${s.id}">
       <div class="lib-main" data-open="1">
         <div class="lib-title">${esc(s.title)}</div>
         <div class="lib-meta">${s.imported?'Importé · ':''}${esc(fmtDate(s.createdAt))} · ${fmtClock(s.durationMs)} · ${s.words?(s.words+' mots'):'non transcrit'}${s.parts>1?(' · '+s.parts+' morceaux'):''}</div>
+        ${showBadge&&s.folderId?`<div class="lib-badge">${icon('folder',11)}${esc(folderName(s.folderId))}</div>`:''}
       </div>
       <span class="lib-type">${esc(TYPE_LABEL[s.type]||'').toUpperCase()}</span>
-      <button class="icon-btn lib-del" data-del="1" title="Supprimer">${icon('trash',16)}</button>
+      <button class="icon-btn lib-more" data-more="1" title="Actions" aria-label="Actions">${icon('dots',16)}</button>
     </div>`).join('');
 }
+/* Choix d'un dossier (sert au déplacement) — résout à undefined si annulé. */
+function askFolder(currentId){
+  return new Promise(res=>{
+    const items=[{icon:'x',label:'Aucun dossier'+(currentId?'':' — actuel'),fn:()=>res(null)}];
+    FOLDERS.list.forEach(f=>items.push({icon:'folder',label:f.name+(f.id===currentId?' — actuel':''),fn:()=>res(f.id)}));
+    items.push({icon:'plus',label:'Nouveau dossier…',fn:async()=>{
+      const n=await promptDialog({title:'Nouveau dossier',label:'Nom du dossier',placeholder:'Droit administratif',ok:'Créer'});
+      if(!n){res(undefined);return}
+      const nf=await createFolder(n);
+      res(nf?nf.id:undefined);
+    }});
+    openSheet('Déplacer vers',items,()=>res(undefined));
+  });
+}
+async function moveSession(id,currentFolder){
+  const f=await askFolder(currentFolder||null);
+  if(f===undefined)return;
+  await setSessionFolder(id,f);
+  await refreshHome();
+  toast(f?('Déplacé dans « '+folderName(f)+' ».'):'Sorti du dossier.','ok');
+}
+async function exportOne(id,title){
+  await exportPack([id],slug(title||'enregistrement')+'.echo',true,title||'');
+}
+function openFolderManager(){
+  if(!FOLDERS.list.length){toast('Aucun dossier pour l\u2019instant.','info');return}
+  openSheet('Gérer les dossiers',FOLDERS.list.map(f=>({
+    icon:'folder',label:f.name,fn:()=>openSheet(f.name,[
+      {icon:'pen',label:'Renommer le dossier',fn:async()=>{
+        const n=await promptDialog({title:'Renommer le dossier',label:'Nom',value:f.name,ok:'Renommer'});
+        if(!n)return;
+        f.name=n.slice(0,60);
+        try{await dbPut('folders',{id:f.id,name:f.name,createdAt:f.createdAt||Date.now()})}catch(e){storageError(e)}
+        await refreshHome();toast('Dossier renommé.','ok');
+      }},
+      {icon:'trash',label:'Supprimer le dossier',danger:true,fn:async()=>{
+        const ok=await confirmDialog({title:'Supprimer le dossier ?',
+          body:'Les enregistrements qu\u2019il contient ne sont pas supprimés : ils reviennent à la racine de la bibliothèque.',
+          ok:'Supprimer',danger:true});
+        if(!ok)return;
+        const n=await removeFolder(f.id);
+        await refreshHome();
+        toast('Dossier supprimé'+(n?(' — '+n+' enregistrement'+(n>1?'s':'')+' remis à la racine.'):'.'),'info',4000);
+      }}
+    ])
+  })));
+}
+function openLibTools(){
+  const items=[
+    {icon:'plus',label:'Nouveau dossier',fn:async()=>{
+      const n=await promptDialog({title:'Nouveau dossier',label:'Nom du dossier',placeholder:'Droit administratif',ok:'Créer'});
+      if(!n)return;
+      const nf=await createFolder(n);
+      if(nf){FOLDERS.current=nf.id;await refreshHome();toast('Dossier « '+nf.name+' » créé.','ok')}
+    }}
+  ];
+  if(FOLDERS.list.length)items.push({icon:'folder',label:'Gérer les dossiers',fn:openFolderManager});
+  items.push({icon:'upload',label:'Importer une sauvegarde (.echo)',fn:()=>$('#file-pack').click()});
+  if(state.sessions.length){
+    const vis=visibleSessions(state.sessions);
+    const scope=FOLDERS.current&&vis.length!==state.sessions.length;
+    if(scope)items.push({icon:'download',label:'Exporter ce dossier ('+vis.length+') avec l\u2019audio',
+      fn:()=>exportPack(vis.map(s=>s.id),slug(FOLDERS.current==='__none'?'sans-dossier':folderName(FOLDERS.current))+'.echo',true,'Dossier')});
+    items.push({icon:'download',label:'Exporter TOUS les enregistrements ('+state.sessions.length+')',
+      fn:()=>exportPack(state.sessions.map(s=>s.id),'echo-bibliotheque-'+new Date().toISOString().slice(0,10)+'.echo',true,'Bibliothèque complète')});
+    items.push({icon:'docic',label:'Exporter TOUT sans l\u2019audio (fichier léger)',
+      fn:()=>exportPack(state.sessions.map(s=>s.id),'echo-documents-'+new Date().toISOString().slice(0,10)+'.echo',false,'Documents seuls')});
+  }
+  openSheet('Bibliothèque',items);
+}
+function openLibItem(id){
+  const s=state.sessions.find(x=>x.id===id);
+  if(!s)return;
+  openSheet(s.title,[
+    {icon:'docic',label:'Ouvrir',fn:()=>openDoc(id)},
+    {icon:'pen',label:'Renommer',fn:()=>renameSession(id,s.title)},
+    {icon:'folder',label:s.folderId?('Déplacer — actuellement « '+folderName(s.folderId)+' »'):'Ranger dans un dossier',fn:()=>moveSession(id,s.folderId)},
+    {icon:'download',label:'Exporter cet enregistrement (.echo)',fn:()=>exportOne(id,s.title)},
+    {icon:'trash',label:'Supprimer',danger:true,fn:async()=>{
+      const ok=await confirmDialog({title:'Supprimer « '+s.title+' » ?',body:'L\u2019audio, la transcription et le document seront définitivement supprimés.',ok:'Supprimer',danger:true});
+      if(!ok)return;
+      await deleteSession(id);
+      if(state.current&&state.current.id===id){state.current=null;releaseAudio()}
+      await refreshHome();
+      toast('Enregistrement supprimé.','info');
+    }}
+  ]);
+}
 function wireLib(){
-  $('#lib-list').addEventListener('click',async e=>{
+  $('#lib-tools').addEventListener('click',openLibTools);
+  $('#file-pack').addEventListener('change',e=>{
+    const f=(e.target.files||[])[0];
+    e.target.value='';
+    if(f)importPack(f);
+  });
+  $('#folder-bar').addEventListener('click',async e=>{
+    const b=e.target.closest('.fchip');if(!b)return;
+    const f=b.dataset.f;
+    if(f==='__new'){
+      const n=await promptDialog({title:'Nouveau dossier',label:'Nom du dossier',placeholder:'Droit administratif',ok:'Créer'});
+      if(!n)return;
+      const nf=await createFolder(n);
+      if(nf){FOLDERS.current=nf.id;await refreshHome();toast('Dossier « '+nf.name+' » créé.','ok')}
+      return;
+    }
+    FOLDERS.current=f||null;
+    renderFolders(state.sessions);renderLib(state.sessions);
+    vibrate(6);
+  });
+  $('#lib-list').addEventListener('click',e=>{
     const item=e.target.closest('.lib-item');if(!item)return;
     const id=item.dataset.id;
-    if(e.target.closest('[data-del]')){
-      const s=state.sessions.find(x=>x.id===id);if(!s)return;
-      item.innerHTML=`<div class="lib-confirm"><span class="q">Supprimer « ${esc(s.title)} » ?</span>
-        <button class="btn-mini danger" data-act="del">Supprimer</button>
-        <button class="btn-mini" data-act="keep">Conserver</button></div>`;
-      return;
-    }
-    const act=e.target.closest('[data-act]');
-    if(act){
-      if(act.dataset.act==='del'){
-        await deleteSession(id);
-        if(state.current&&state.current.id===id){state.current=null;releaseAudio()}
-        toast('Enregistrement supprimé.','info');
-      }
-      refreshHome();
-      return;
-    }
+    if(e.target.closest('[data-more]')){openLibItem(id);return}
     if(e.target.closest('[data-open]'))openDoc(id);
   });
 }
 
 /* ==================== SERVICE WORKER ==================== */
 const SW_SRC=`/* Écho — service worker : cache hors ligne de l'application */
-const CACHE='echo-v2';
+const CACHE='echo-v3';
 self.addEventListener('install',e=>{
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c=>c.add('./')).catch(()=>{}));
@@ -3269,6 +3690,11 @@ function wireSettings(){
     }catch(e){toast('Liste des modèles indisponible — vérifiez la clé ou le réseau.','warn',4600)}
     btn.disabled=false;btn.innerHTML=old;
   });
+  $('#set-export').addEventListener('click',()=>{
+    if(!state.sessions.length){toast('Aucun enregistrement à exporter.','warn');return}
+    exportPack(state.sessions.map(x=>x.id),'echo-bibliotheque-'+new Date().toISOString().slice(0,10)+'.echo',true,'Bibliothèque complète');
+  });
+  $('#set-import').addEventListener('click',()=>$('#file-pack').click());
   $('#btn-sw-dl').addEventListener('click',()=>{
     downloadBlob(new Blob([SW_SRC],{type:'application/javascript'}),'sw.js');
     toast('Fichier sw.js téléchargé — placez-le à côté de la page sur votre hébergement.','info',4200);
@@ -3345,6 +3771,7 @@ function wire(){
   $('#brand-ico').innerHTML=icon('brand',24);
   $('#brand').addEventListener('click',()=>{if(document.body.dataset.view!=='rec')show('home')});
   $('#btn-settings').innerHTML=icon('gear',18);
+  $('#lib-tools').innerHTML=icon('dots',17);
   $('#btn-abandon').innerHTML=icon('x',18);
   $('#btn-stop').innerHTML=icon('stop',26);
   $('#btn-mark').innerHTML=icon('bookmark',21);
@@ -3508,6 +3935,9 @@ function wire(){
       }});
     }
     items.push(
+      {icon:'pen',label:'Renommer l\u2019enregistrement',fn:()=>renameSession(s.id,s.title)},
+      {icon:'folder',label:s.folderId?('Déplacer — actuellement « '+folderName(s.folderId)+' »'):'Ranger dans un dossier',fn:()=>moveSession(s.id,s.folderId)},
+      {icon:'download',label:'Exporter cet enregistrement (.echo)',fn:()=>exportOne(s.id,s.title)},
       {icon:'docic',label:'Transcription brute (modifier)',fn:()=>{const d=$('#raw-details');d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'})}},
       {icon:'download',label:'Télécharger l\u2019audio',fn:exportAudio},
       {icon:'docic',label:'Télécharger le document (HTML)',fn:exportHTML},
@@ -3530,7 +3960,11 @@ function wire(){
 /* ==================== SUGGESTIONS DE NOM ==================== */
 const SUGGEST=['Cours de droit — chapitre 4','Réunion d\u2019équipe produit','Entretien de mémoire','Conférence du samedi','TD d\u2019économie n°7','Point hebdo avec l\u2019équipe'];
 let sugI=0;
-setInterval(()=>{const i=$('#rec-title');if(i&&!i.value&&document.body.dataset.view==='home')i.placeholder=SUGGEST[sugI++%SUGGEST.length]},3400);
+setInterval(()=>{
+  if(document.visibilityState!=='visible'||document.body.dataset.view!=='home')return;
+  const i=$('#rec-title');
+  if(i&&!i.value)i.placeholder=SUGGEST[sugI++%SUGGEST.length];
+},4000);
 
 /* ==================== DÉMARRAGE ==================== */
 (async function init(){
