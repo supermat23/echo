@@ -77,6 +77,15 @@ body[data-view="rec"] #topbar{display:none}
 .zai-d{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.4}
 .zai-go{flex:none;display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 15px;background:var(--green-dim);border:1px solid rgba(74,222,128,.35);border-radius:10px;color:var(--green);font:600 13px var(--sans)}
 .zai-go:active{filter:brightness(1.15)}
+/* --- Découpage audio --- */
+.split-modal-body{max-height:52vh;overflow-y:auto;margin-top:6px}
+.split-est{font:500 11px var(--mono);color:var(--muted);margin-top:10px;line-height:1.5}
+.split-size-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.split-chip{height:38px;padding:0 14px;border:1.5px solid var(--line-strong);border-radius:10px;font:600 13px var(--sans);color:var(--text);background:var(--surface-2)}
+.split-chip.on{border-color:var(--orange);background:var(--orange-dim);color:var(--orange)}
+.split-custom{flex:1;min-width:90px;height:38px;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--surface-2);padding:0 10px;font:500 13px var(--mono);color:var(--text)}
+.split-custom:focus{border-color:var(--orange);outline:none}
+.split-hintlist{margin-top:10px;font-size:11.5px;color:var(--muted);line-height:1.55}
 .library{margin-top:46px}
 .lib-head{display:flex;align-items:baseline;gap:12px;padding-bottom:10px}
 .lib-head h2{font:600 22px var(--serif)}
@@ -352,7 +361,7 @@ body[data-view="rec"] #topbar{display:none}
         <div class="import-box">
           <button class="import-btn" id="btn-import"></button>
           <input id="file-import" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.oga,.webm,.aac,.flac,.opus" hidden>
-          <p class="import-note">MP3, M4A, WAV, OGG… — rejoint la bibliothèque et se transcrit comme un enregistrement.</p>
+          <p class="import-note">MP3, M4A, WAV, OGG… — un seul fichier ou plusieurs parties d'un même enregistrement (sélectionnées ensemble, dans l'ordre), transcrits comme un seul document.</p>
         </div>
         <button class="setup-banner" id="setup-banner"></button>
         <div class="zai-box">
@@ -1307,10 +1316,61 @@ const GROQ_URL='https://api.groq.com/openai/v1/audio/transcriptions';
 const MAX_UPLOAD=24*1024*1024;
 const GROQ_MIMES=/^(audio\/(flac|mp3|mp4|mpeg|mpga|m4a|ogg|wav|webm|x-m4a|x-wav))$/i;
 const GROQ_MIME_FOR={mp3:'audio/mp3',m4a:'audio/m4a',mp4:'audio/mp4',ogg:'audio/ogg',wav:'audio/wav',flac:'audio/flac',webm:'audio/webm'};
-async function resolveAudioBlob(sess){
-  if(state.current&&state.current.id===sess.id&&state.audioBlob)return state.audioBlob;
+async function setupAudioSource(sess){
+  const audio=$('#audio-el');
+  if(state.audioUrl){URL.revokeObjectURL(state.audioUrl);state.audioUrl=null}
   const a=await dbGet('audio',sess.id);
-  return a&&a.blob||null;
+  state.audioBlob=null;state.audioParts=[];
+  if(a&&a.blob){
+    state.audioBlob=a.blob;
+    state.audioUrl=URL.createObjectURL(a.blob);
+    audio.src=state.audioUrl;
+    $('#player').hidden=false;$('#view-doc').classList.remove('no-audio');
+  }else if(a&&a.multi&&a.multi.length){
+    state.audioParts=a.multi.map(m=>({name:m.name,url:URL.createObjectURL(m.blob),durMs:m.durMs||0}));
+    state.audioPartIdx=0;
+    audio.src=state.audioParts[0].url;
+    audio.addEventListener('ended',playNextPart);
+    $('#player').hidden=false;$('#view-doc').classList.remove('no-audio');
+    /* durée totale */
+    fixDuration();
+  }else{
+    audio.removeAttribute('src');audio.load();
+    $('#player').hidden=true;$('#view-doc').classList.add('no-audio');
+  }
+}
+function playNextPart(){
+  const audio=$('#audio-el');
+  if(!state.audioParts||!state.current)return;
+  const next=state.audioPartIdx+1;
+  if(next<state.audioParts.length){
+    state.audioPartIdx=next;
+    audio.src=state.audioParts[next].url;
+    audio.play().catch(()=>{});
+  }else{
+    audio.removeEventListener('ended',playNextPart);
+    $('#pl-play').innerHTML=icon('play',20);
+  }
+}
+async function resolveAudioBlob(sess){
+  if(state.current&&state.current.id===sess.id){
+    if(state.audioBlob)return state.audioBlob;
+    if(state.audioParts&&state.audioParts.length){
+      /* transcription : chaque morceau séparément (voir runApiTranscription) */
+      return null;
+    }
+  }
+  const a=await dbGet('audio',sess.id);
+  if(a&&a.blob)return a.blob;
+  return null;
+}
+/* Récupère les morceaux d'une session (blob unique = 1 morceau) */
+async function resolveAudioParts(sess){
+  const a=await dbGet('audio',sess.id);
+  if(!a)return [];
+  if(a.blob)return [{blob:a.blob,offsetMs:0}];
+  if(a.multi)return a.multi.map(m=>({blob:m.blob,offsetMs:0}));
+  return [];
 }
 function blobExt(blob,fallback){
   const t=String(blob.type||'').toLowerCase();
@@ -1424,6 +1484,24 @@ async function windowSliceParts(blob,durMs,onPart){
   }
   return parts;
 }
+/* ===== Découpage mémoire-sobre =====
+   mp3SliceParts : tranches d'octets d'un MP3 (flux tolérant aux coupures),
+   chaque tranche décodée séparément — ~30 Mo en mémoire au lieu du fichier
+   entier. Était référencée mais absente après consolidation : c'est la
+   cause du « mp3SliceParts is not defined ». */
+async function mp3SliceParts(blob,onPart){
+  const SLICE=4*1024*1024;
+  const parts=[];let off=0,acc=0;
+  while(off<blob.size){
+    const end=Math.min(off+SLICE,blob.size);
+    const d=await decodeAudio16k(blob.slice(off,end));
+    const rate=d.rate||16000;
+    parts.push({blob:encodeWav(monoSlice(d,0,d.len),rate),ext:'wav',offsetMs:Math.round(acc/rate*1000)});
+    acc+=d.len;off=end;
+    if(onPart)onPart(parts.length);
+  }
+  return parts;
+}
 async function groqPostPart(part,key,sess,signal,onPhase,model){
   for(let attempt=0;;attempt++){
     const fd=new FormData();
@@ -1480,21 +1558,22 @@ async function testGroqKey(key){
   if(r.status===401||r.status===403)return {ok:false,reason:'Clé refusée — vérifiez qu\u2019elle est complète et active.'};
   return {ok:false,reason:'Serveur inaccessible (erreur '+r.status+').'};
 }
+function endSafe(dec,o,chunkSamples){return Math.min(o+chunkSamples,dec.len)}
 async function runApiTranscription(sess){
   const key=CFG.key;
   if(!key){toast('Configurez d\u2019abord votre clé Groq dans les réglages.','warn');state.pending=sess;openSettings();return false}
-  const blob=await resolveAudioBlob(sess);
-  if(!blob){toast('Aucun audio disponible pour cet enregistrement.','warn');return false}
+  const allParts=await resolveAudioParts(sess);
+  if(!allParts.length){toast('Aucun audio disponible pour cet enregistrement.','warn');return false}
   composerShow();
   $('#composer-title').textContent='Transcription Whisper';
   $('#composer-sub').textContent=sess.title;
   $('#ring-fg').style.strokeDashoffset=326.7;
   $('#ring-core').innerHTML=`<span class="spin">${icon('refresh',30)}</span>`;
-  $('#composer-note').textContent='L\u2019audio est envoyé à Groq par parties ; la progression est sauvegardée après chaque partie.';
+  $('#composer-note').textContent='L\u2019audio est envoyé à Groq morceau par morceau ; la progression est sauvegardée après chacun.';
   $('#composer-body').innerHTML=`
     <div class="ai-stat">
       <p class="ai-phase" id="api-phase">Préparation</p>
-      <p class="ai-detail" id="api-detail">Chargement de l\u2019audio (${(blob.size/1048576).toFixed(1)} Mo)…</p>
+      <p class="ai-detail" id="api-detail">Chargement de l\u2019audio (${(allParts.reduce((a,p)=>a+p.blob.size,0)/1048576).toFixed(1)} Mo en ${allParts.length} morceau${allParts.length>1?'x':''})…</p>
       <p class="ai-elapsed" id="api-elapsed">00:00</p>
       <button class="btn-skipc ai-cancel" id="api-cancel">Annuler</button>
     </div>`;
@@ -1503,48 +1582,129 @@ async function runApiTranscription(sess){
   let timer=null;
   grabWakeLock();
   try{
-    const mime=String(blob.type||'').split(';')[0].trim().toLowerCase();
-    const direct=blob.size<=MAX_UPLOAD&&GROQ_MIMES.test(mime);
-    let parts=null,decoded=null,rate=16000,chunkSamples=0,totalParts=1;
+    /* ===== Construction des envois : chaque morceau ≤ 24 Mo en format
+       accepté part tel quel (jamais de décodage du fichier entier —
+       la cause des plantages iPhone sur les enregistrements longs).
+       Les morceaux hors critères sont découpés par tranche mémoire-sobre. ===== */
+    const sendable=p=>p.blob.size<=MAX_UPLOAD&&GROQ_MIMES.test(String(p.blob.type||'').split(';')[0].trim().toLowerCase());
+    let parts=[];
     let startPart=0;const priorSegs=[];
     const pr=sess.trProgress;
-    if(pr&&pr.segs&&pr.segs.length&&pr.totalParts>1&&pr.chunkSamples>0){
-      const go=await confirmDialog({title:'Reprendre la transcription ?',body:pr.doneParts+' / '+pr.totalParts+' parties déjà transmises. Reprendre à la partie '+(pr.doneParts+1)+' ?',ok:'Reprendre',cancel:'Recommencer'});
-      if(go){startPart=Math.min(pr.doneParts,pr.totalParts-1);priorSegs.push(...pr.segs);chunkSamples=pr.chunkSamples;totalParts=pr.totalParts}
+    if(pr&&pr.segs&&pr.segs.length&&pr.totalParts>1){
+      const go=await confirmDialog({title:'Reprendre la transcription ?',body:pr.doneParts+' / '+pr.totalParts+' morceaux déjà transmis. Reprendre à '+(pr.doneParts+1)+' ?',ok:'Reprendre',cancel:'Recommencer'});
+      if(go){startPart=Math.min(pr.doneParts,pr.totalParts-1);priorSegs.push(...pr.segs)}
       else delete sess.trProgress;
     }else if(pr)delete sess.trProgress;
-    if(startPart===0){
-      if(direct){
-        /* envoi direct */
-      }else{
-        const ext=String(sess.audioExt||'').toLowerCase();
-        const isMp3=/mpeg|mp3/.test(mime)||ext==='mp3';
-        const durSec=(sess.durationMs||0)/1000;
-        const dm=(navigator.deviceMemory||4);
-        const limitMB=dm>=8?800:dm>=6?450:dm>=4?280:150;
-        const kbps=durSec>0?blob.size*8/durSec/1000:0;
-        const chMul=(kbps>0&&kbps<96)?1:2;
-        const estMB=durSec*16000*4*chMul/1048576;
-        if(estMB>limitMB&&isMp3){
-          $('#api-phase').textContent='Découpage du MP3';
-          $('#api-detail').textContent='Décodage tranche par tranche (mémoire réduite)…';
-          parts=await mp3SliceParts(blob,n=>{$('#api-detail').textContent='Tranche '+n+' décodée…'});
-          totalParts=parts.length;
-        }else if(estMB>limitMB){
-          const go=await confirmDialog({title:'Fichier lourd pour cet appareil',body:'La conversion demande ~'+Math.round(estMB)+' Mo de mémoire : un plantage de la page est probable ici. Convertissez le fichier en MP3 (l\u2019application le découpera alors automatiquement), ou transcrivez-le depuis un ordinateur. Tenter quand même ?',ok:'Tenter quand même',cancel:'Annuler'});
-          if(!go)throw new Error('conversion annulée — convertissez le fichier en MP3 ou utilisez un ordinateur');
+    if(!pr||!pr.segs||startPart===0){
+      /* --- préparation fraîche des envois --- */
+      if(allParts.every(sendable)){
+        let acc=0;
+        for(const p of allParts){
+          const d=await audioDuration(p.blob);
+          parts.push({blob:p.blob,ext:blobExt(p.blob),offsetMs:acc});
+          acc+=d||0;
         }
-        if(!parts){
-          $('#api-phase').textContent='Décodage de l\u2019audio';
-          $('#api-detail').textContent='Décodage en 16 kHz (le plus long : quelques minutes pour 1 h 30). Gardez l\u2019écran allumé…';
-          try{decoded=await decodeAudio16k(blob)}
-          catch(e){throw new Error('décodage impossible — fichier illisible ou mémoire insuffisante. Essayez un export en MP3 mono, ou découpez le fichier.')}
-          rate=decoded.rate||16000;
-          chunkSamples=Math.floor(20*1024*1024/2);
-          totalParts=Math.max(1,Math.ceil(decoded.len/chunkSamples));
+      }else{
+        for(const p of allParts){
+          if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
+          const mime=String(p.blob.type||'').split(';')[0].trim().toLowerCase();
+          const ext=String(sess.audioExt||'').toLowerCase();
+          if(sendable(p)){
+            const d=await audioDuration(p.blob);
+            parts.push({blob:p.blob,ext:blobExt(p.blob,sess.audioExt),offsetMs:parts.reduce((a,x)=>a+0,0)&&0||0});
+            /* décalage calculé après coup, voir ci-dessous */
+            parts[parts.length-1].offsetMs=0;
+            parts.push({blob:p.blob,ext:blobExt(p.blob,sess.audioExt),offsetMs:0});
+            parts.pop();
+            parts[parts.length-1]._durMs=d;
+          }else if(/mpeg|mp3/.test(mime)||ext==='mp3'){
+            /* MP3 volumineux : tranches d'octets (frontières sûres) */
+            $('#api-phase').textContent='Découpage du MP3';
+            const SLICE=4*1024*1024;
+            let off=0;
+            const sub=[];
+            while(off<p.blob.size){
+              const end=Math.min(off+SLICE,p.blob.size);
+              const d=await decodeAudio16k(p.blob.slice(off,end));
+              const rate=d.rate||16000;
+              sub.push({blob:encodeWav(monoSlice(d,0,d.len),rate),ext:'wav'});
+              off=end;
+              $('#api-detail').textContent='Tranche '+(sub.length)+' décodée…';
+            }
+            sub.forEach(sp=>{sp._durMs=0;parts.push(sp)});
+            parts.push({_endOfMp3:true,_durMs:await audioDuration(p.blob)});
+            parts.pop();
+            /* marqueur de fin pour le calcul des décalages */
+            parts.push({_mp3Whole:p.blob,_durMs:await audioDuration(p.blob),_isMp3:true});
+            const dFull=await audioDuration(p.blob);
+            sub.forEach((sp,i)=>{
+              sp.offsetMs=Math.round(dFull*i/sub.length);
+            });
+            parts=parts.filter(x=>!x._endOfMp3&&!x._mp3Whole);
+            sub.forEach(sp=>parts.push(sp));
+          }else{
+            /* webm / m4a / autre : fenêtres temporelles mémoire-sobres */
+            $('#api-phase').textContent='Décodage d\u2019un morceau volumineux';
+            $('#api-detail').textContent='Fenêtres de 20 Mo — gardez l\u2019écran allumé…';
+            const dec=await decodeAudio16k(p.blob);
+            const rate=dec.rate||16000;
+            const chunkSamples=Math.floor(20*1024*1024/2);
+            for(let o=0;o<dec.len;o+=chunkSamples){
+              const end=Math.min(o+chunkSamples,dec.len);
+              parts.push({blob:encodeWav(monoSlice(dec,o,end),rate),ext:'wav',offsetMs:Math.round(o/rate*1000)});
+            }
+          }
+        }
+      }
+      /* --- calcul des décalages temporels cumulés --- */
+      let acc=0;
+      for(const p of parts){
+        if(p.offsetMs==null){
+          const d=p._durMs||await audioDuration(p.blob);
+          p.offsetMs=acc;
+          acc+=d||0;
+        }else{
+          acc=Math.max(acc,p.offsetMs+(p._durMs||await audioDuration(p.blob)||0));
+        }
+      }
+    }else{
+      /* reprise : reconstruire la même liste d'envois */
+      if(allParts.every(sendable)){
+        let acc=0;
+        for(const p of allParts){
+          const d=await audioDuration(p.blob);
+          parts.push({blob:p.blob,ext:blobExt(p.blob),offsetMs:acc});
+          acc+=d||0;
+        }
+      }else{
+        for(const p of allParts){
+          const mime=String(p.blob.type||'').split(';')[0].trim().toLowerCase();
+          const ext=String(sess.audioExt||'').toLowerCase();
+          if(sendable(p)){
+            parts.push({blob:p.blob,ext:blobExt(p.blob,sess.audioExt),offsetMs:0,_durMs:await audioDuration(p.blob)});
+          }else if(/mpeg|mp3/.test(mime)||ext==='mp3'){
+            const SLICE=4*1024*1024;
+            let off=0;const sub=[];
+            while(off<p.blob.size){
+              const end=Math.min(off+SLICE,p.blob.size);
+              const d=await decodeAudio16k(p.blob.slice(off,end));
+              sub.push({blob:encodeWav(monoSlice(d,0,d.len),d.rate||16000),ext:'wav'});
+              off=end;
+            }
+            const dFull=await audioDuration(p.blob);
+            sub.forEach((sp,i)=>{sp.offsetMs=Math.round(dFull*i/sub.length);parts.push(sp)});
+          }else{
+            const dec=await decodeAudio16k(p.blob);
+            const rate=dec.rate||16000;
+            const chunkSamples=Math.floor(20*1024*1024/2);
+            for(let o=0;o<dec.len;o+=chunkSamples){
+              parts.push({blob:encodeWav(monoSlice(dec,o,endSafe(dec,o,chunkSamples)),rate),ext:'wav',offsetMs:Math.round(o/rate*1000)});
+            }
+          }
         }
       }
     }
+    const totalParts=Math.max(1,parts.length);
     const t0=performance.now();
     timer=setInterval(()=>{const el=$('#api-elapsed');if(el)el.textContent=fmtClock(performance.now()-t0)},500);
     const segs=[...priorSegs];
@@ -1552,17 +1712,10 @@ async function runApiTranscription(sess){
     const triedModels=new Set([curModel]);
     for(let i=startPart;i<totalParts;i++){
       if(ctl.signal.aborted)throw new DOMException('annulé','AbortError');
-      const base=totalParts>1?('Partie '+(i+1)+'/'+totalParts+' — '):'';
-      let part;
-      if(parts){part=parts[i]}
-      else if(decoded){
-        const o=i*chunkSamples,end=Math.min(o+chunkSamples,decoded.len);
-        $('#api-phase').textContent=base+'Préparation de l\u2019extrait';
-        $('#api-detail').textContent='Conversion de l\u2019extrait en WAV mono…';
-        part={blob:encodeWav(monoSlice(decoded,o,end),rate),ext:'wav',offsetMs:Math.round(o/rate*1000)};
-      }else{part={blob,ext:blobExt(blob,sess.audioExt),offsetMs:0}}
+      const base=totalParts>1?('Morceau '+(i+1)+'/'+totalParts+' — '):'';
+      const part=parts[i];
       $('#api-phase').textContent=base+'Envoi de l\u2019audio';
-      $('#api-detail').textContent='Whisper '+(curModel.includes('turbo')?'turbo':'large-v3')+' · '+(part.blob.size/1048576).toFixed(1)+' Mo';
+      $('#api-detail').textContent='Whisper '+(curModel.includes('turbo')?'turbo':'large-v3')+' · '+(part.blob.size/1048576).toFixed(1)+' Mo'+(totalParts>1?' · ['+fmtClock(part.offsetMs||0)+']':'');
       let rs;
       try{
         rs=await groqPostPart(part,key,sess,ctl.signal,(label,detail)=>{
@@ -1576,16 +1729,15 @@ async function runApiTranscription(sess){
             toast('Quota « '+curModel+' » atteint — bascule sur « '+alt+' » (quota séparé).','info',3600);
             curModel=alt;i--;continue;
           }
-          if(segs.length&&totalParts>1&&chunkSamples>0){sess.trProgress={doneParts:i,totalParts,chunkSamples,segs};await dbPut('sessions',sess)}
+          if(segs.length&&totalParts>1){sess.trProgress={doneParts:i,totalParts,segs};await dbPut('sessions',sess)}
           const mins=Math.max(1,Math.round((e.retryInMs||600000)/60000));
-          throw new Error('quota horaire Groq atteint. '+(segs.length?('Progression sauvegardée ('+i+'/'+totalParts+') — relancez dans ~'+mins+' min, la reprise repartira de la partie '+(i+1)+'.'):'Réessayez dans ~'+mins+' min.'));
+          throw new Error('quota horaire Groq atteint. '+(segs.length?('Progression sauvegardée ('+i+'/'+totalParts+') — relancez dans ~'+mins+' min, la reprise repartira du morceau '+(i+1)+'.'):'Réessayez dans ~'+mins+' min.'));
         }
         throw e;
       }
       segs.push(...rs);
-      if(totalParts>1&&chunkSamples>0){sess.trProgress={doneParts:i+1,totalParts,chunkSamples,segs};await dbPut('sessions',sess)}
+      if(totalParts>1){sess.trProgress={doneParts:i+1,totalParts,segs};await dbPut('sessions',sess)}
     }
-    decoded=null;parts=null;
     clearInterval(timer);timer=null;
     if(!segs.length)throw new Error('aucune parole détectée dans l\u2019enregistrement');
     delete sess.trProgress;
@@ -1795,44 +1947,43 @@ function askImportDetails(defTitle){
     };
   });
 }
-async function importAudioFile(file){
-  if(!file)return;
-  if(file.size>600*1024*1024){toast('Fichier trop volumineux (maximum ~600 Mo).','warn');return}
-  const rawName=(file.name||'').replace(/\.[^.]+$/,'').replace(/[_\-]+/g,' ').replace(/\s+/g,' ').trim();
+async function importAudioFiles(files){
+  if(!files.length)return;
+  if(files.some(f=>f.size>600*1024*1024)){toast('Un fichier dépasse ~600 Mo.','warn');return}
+  /* Trier par nom : partie1, partie2… dans l'ordre */
+  files=[...files].sort((a,b)=>String(a.name).localeCompare(String(b.name),'fr',{numeric:true}));
+  const first=files[0];
+  const rawName=(first.name||'').replace(/\.[^.]+$/,'').replace(/[_\-]?\d+$/,'').replace(/[_\-]+/g,' ').trim();
   const det=await askImportDetails(cap(rawName||'Audio importé'));
   if(!det)return;
-  toast('Import en cours…','info',1600);
-  const durMs=await audioDuration(file);
-  const sess={id:uid(),title:det.title,type:det.type,createdAt:Date.now(),durationMs:durMs,segments:[],marks:[],docHTML:null,audioExt:extOf(file),imported:true};
-  await dbPut('audio',{id:sess.id,blob:file});
-  await dbPut('sessions',sess);
+  toast(files.length>1?('Import de '+files.length+' parties…'):'Import en cours…','info',1600);
+  const durs=[];
+  for(const f of files)durs.push(await audioDuration(f));
+  const totalMs=durs.reduce((a,b)=>a+b,0);
+  const sess={id:uid(),title:det.title,type:det.type,createdAt:Date.now(),durationMs:totalMs,segments:[],marks:[],docHTML:null,audioExt:extOf(first),imported:true,parts:files.map((f,i)=>({name:f.name,size:f.size,durMs:durs[i]||0}))};
+  /* Audio : un seul blob si 1 fichier, sinon structure multi */
+  if(files.length===1){await dbPut('audio',{id:sess.id,blob:files[0]})}
+  else{await dbPut('audio',{id:sess.id,multi:files.map(f=>({name:f.name,blob:f}))})}
   state.current=sess;
-  state.audioBlob=file;
-  if(state.audioUrl){URL.revokeObjectURL(state.audioUrl);state.audioUrl=null}
-  state.audioUrl=URL.createObjectURL(file);
-  $('#audio-el').src=state.audioUrl;
-  $('#player').hidden=false;
-  $('#view-doc').classList.remove('no-audio');
+  await setupAudioSource(sess);
+  await dbPut('sessions',sess);
   resetPlayerUI();
   await refreshHome();
-  toast('Audio importé dans la bibliothèque.','ok');
+  toast(files.length>1?(files.length+' parties importées — un seul document sera produit.'):'Audio importé dans la bibliothèque.','ok');
   const go=await confirmDialog({
     title:'Transcrire et résumer maintenant ?',
-    body:'Whisper transcrira « '+sess.title+' » puis l\u2019IA en rédigera le résumé. Vous pourrez aussi le faire plus tard avec le bouton sur le document.',
+    body:'Whisper transcrira '+(files.length>1?('les '+files.length+' parties comme un seul enregistrement'):'« '+sess.title+' »')+', puis l\u2019IA en rédigera le résumé. Vous pourrez aussi le faire plus tard.',
     ok:'Transcrire et résumer',cancel:'Plus tard'
   });
   if(go){
-    const done=await runApiTranscription(state.current);
+    const done=await runApiTranscription(sess);
     if(done){
-      if(AI.ready){const ok=await runAIDraft(state.current);if(!ok)await composeAndShow(state.current);}
-      else await composeAndShow(state.current);
-    }else{
-      await composeAndShow(state.current);
-    }
-  }else{
-    await composeAndShow(state.current);
-  }
+      if(AI.ready){const ok=await runAIDraft(sess);if(!ok)await composeAndShow(sess);}
+      else await composeAndShow(sess);
+    }else await composeAndShow(sess);
+  }else await composeAndShow(sess);
 }
+
 
 /* ==================== RENDU DU DOCUMENT ==================== */
 function dumpRaw(segs){return segs.map(x=>`[${fmtClock(x.start)}] ${x.text}`).join('\n\n')}
@@ -1858,20 +2009,8 @@ function renderDocBody(s){
 async function openDoc(id){
   const s=await dbGet('sessions',id);
   if(!s){toast('Enregistrement introuvable.','warn');return}
-  const a=await dbGet('audio',id);
   state.current=s;state.editing=false;
-  const audio=$('#audio-el');
-  if(state.audioUrl){URL.revokeObjectURL(state.audioUrl);state.audioUrl=null}
-  if(a&&a.blob){
-    state.audioBlob=a.blob;
-    state.audioUrl=URL.createObjectURL(a.blob);
-    audio.src=state.audioUrl;
-    $('#player').hidden=false;
-    $('#view-doc').classList.remove('no-audio');
-  }else{
-    state.audioBlob=null;audio.removeAttribute('src');audio.load();
-    $('#player').hidden=true;$('#view-doc').classList.add('no-audio');
-  }
+  await setupAudioSource(s);
   resetPlayerUI();
   if(!s.docHTML){await composeAndShow(s)}else{renderDocBody(s);show('doc')}
   refreshHome();
@@ -2881,6 +3020,132 @@ function flashSaved(){
   clearTimeout(flashSaved._t);
   flashSaved._t=setTimeout(()=>el.classList.remove('show'),1700);
 }
+function askSplitAudio(sess){
+  const root=$('#modal-root');
+  const g=++_modalGen;
+  const sizeMb=(state.audioBlob?state.audioBlob.size:0)/1048576;
+  const durMin=Math.max(1,Math.round((sess.durationMs||0)/60000));
+  let targetMb=20;
+  root.innerHTML=`<div class="modal-overlay"></div>
+    <div class="modal" style="width:min(94vw,400px)"><h3>Découper l\u2019audio</h3>
+    <p>La découpe transforme l\u2019audio en morceaux autonomes, transcrits ensuite comme un seul document (horodatages continus). Idéal avant une transcription sur mobile : chaque morceau part tel quel, sans conversion lourde.</p>
+    <div class="split-modal-body">
+      <div class="split-size-row">
+        <button class="split-chip on" data-mb="20">20 Mo</button>
+        <button class="split-chip" data-mb="10">10 Mo</button>
+        <button class="split-chip" data-mb="5">5 Mo</button>
+        <input class="split-custom" type="number" min="2" max="23" step="1" placeholder="Mo…" inputmode="numeric">
+      </div>
+      <p class="split-est" id="split-est"></p>
+      <p class="split-hintlist" id="split-hint"></p>
+    </div>
+    <div class="modal-actions"><button class="btn-ghost" data-no="1">Annuler</button>
+    <button class="btn-primary" data-yes="1" style="height:44px">${icon('chip',15)}<span>Découper</span></button></div></div>`;
+  const ov=root.querySelector('.modal-overlay'),m=root.querySelector('.modal');
+  requestAnimationFrame(()=>{ov.classList.add('in');m.classList.add('in')});
+  const est=$('#split-est'),hint=$('#split-hint');
+  const upd=()=>{
+    const n=Math.max(1,Math.ceil(sizeMb/targetMb));
+    est.textContent='≈ '+n+' morceau'+(n>1?'x':'')+' de ~'+targetMb+' Mo ('+Math.round(sizeMb)+' Mo au total).';
+    if(/iPhone|iPad|iPod/i.test(navigator.userAgent)&&targetMb>20)
+      hint.textContent='Sur iPhone, préférez 10 Mo ou moins pour un maximum de sécurité mémoire.';
+    else
+      hint.textContent='Découpe MP3 exacte aux frontières. WebM/M4A : découpe temporelle par décodage par fenêtres — gardez l\u2019écran allumé pendant l\u2019opération.';
+  };
+  upd();
+  m.querySelectorAll('.split-chip').forEach(c=>c.addEventListener('click',()=>{
+    m.querySelectorAll('.split-chip').forEach(x=>x.classList.remove('on'));
+    c.classList.add('on');
+    targetMb=+c.dataset.mb;
+    const ci=m.querySelector('.split-custom');ci.value='';
+    upd();
+  }));
+  m.querySelector('.split-custom').addEventListener('input',e=>{
+    const v=parseFloat(e.target.value);
+    if(v>=2&&v<=23){
+      targetMb=Math.round(v);
+      m.querySelectorAll('.split-chip').forEach(x=>x.classList.remove('on'));
+      upd();
+    }
+  });
+  const close=()=>{ov.classList.remove('in');m.classList.remove('in');setTimeout(()=>{if(g===_modalGen)root.innerHTML=''},250)};
+  ov.onclick=close;
+  m.querySelector('[data-no]').onclick=close;
+  m.querySelector('[data-yes]').onclick=async()=>{
+    close();
+    await doSplitAudio(sess,targetMb);
+  };
+}
+async function doSplitAudio(sess,targetMb){
+  const blob=await resolveAudioBlob(sess);
+  if(!blob){toast('Aucun audio à découper.','warn');return}
+  const mime=String(blob.type||'').split(';')[0].trim().toLowerCase();
+  const ext=String(sess.audioExt||'').toLowerCase();
+  const isMp3=/mpeg|mp3/.test(mime)||ext==='mp3';
+  composerShow();
+  $('#composer-title').textContent='Découpe de l\u2019audio';
+  $('#composer-sub').textContent=sess.title;
+  $('#ring-fg').style.strokeDashoffset=326.7;
+  $('#ring-core').innerHTML=`<span class="spin">${icon('chip',30)}</span>`;
+  $('#composer-note').textContent='Les morceaux remplacent l\u2019audio original — la transcription les enverra directement, sans conversion lourde.';
+  grabWakeLock();
+  try{
+    let parts=[];
+    if(isMp3){
+      /* MP3 : coupure exacte aux frontières d'octets */
+      const SLICE=targetMb*1024*1024;
+      let off=0,acc=0;
+      while(off<blob.size){
+        const end=Math.min(off+SLICE,blob.size);
+        parts.push({blob:blob.slice(off,end),name:'partie-'+(parts.length+1)+'.mp3'});
+        off=end;
+      }
+    }else{
+      /* Autres formats : fenêtres temporelles via décodage économe */
+      $('#composer-body').innerHTML=`<div class="ai-stat"><p class="ai-phase" id="sp-phase">Décodage</p><p class="ai-detail" id="sp-detail">Préparation…</p></div>`;
+      const durs=[];
+      const durMs=sess.durationMs||await audioDuration(blob);
+      const bytesPerMs=blob.size/Math.max(1,durMs);
+      const winMs=(targetMb*1024*1024)/bytesPerMs;
+      const dec=await decodeAudio16k(blob);
+      const rate=dec.rate||16000;
+      const winSamples=Math.floor(winMs/1000*rate);
+      let off=0;
+      while(off<dec.len){
+        const end=Math.min(off+winSamples,dec.len);
+        $('#sp-phase').textContent='Fenêtre '+(parts.length+1);
+        $('#sp-detail').textContent=Math.round(off/rate)+' s / '+Math.round(dec.len/rate)+' s traités…';
+        parts.push({blob:encodeWav(monoSlice(dec,off,end),rate),name:'partie-'+(parts.length+1)+'.wav'});
+        off=end;
+      }
+    }
+    if(parts.length<2){toast('Audio trop court pour être découpé à cette taille.','info');composerHide();releaseWakeLock();return}
+    /* Sauvegarde : structure multi remplace le blob unique */
+    await dbPut('audio',{id:sess.id,multi:parts.map(p=>({name:p.name,blob:p.blob}))});
+    sess.parts=parts.map(p=>({name:p.name,size:p.blob.size}));
+    delete sess.trProgress;
+    delete sess.segments;
+    await dbPut('sessions',sess);
+    state.current=sess;
+    await setupAudioSource(sess);
+    resetPlayerUI();
+    composerHide();
+    releaseWakeLock();
+    toast(parts.length+' morceaux créés — prêts pour une transcription légère.','ok',3600);
+    const go=await confirmDialog({title:'Transcrire maintenant ?',body:parts.length+' morceaux seront transcrits comme un seul document, puis l\u2019IA en rédigera le résumé.',ok:'Transcrire et résumer',cancel:'Plus tard'});
+    if(go){
+      const done=await runApiTranscription(sess);
+      if(done&&AI.ready)await runAIDraft(sess);
+      else if(done)await composeAndShow(sess);
+    }else{
+      renderDocBody(sess);show('doc');
+    }
+  }catch(e){
+    composerHide();
+    releaseWakeLock();
+    toast('Découpe impossible : '+(e&&e.message?e.message:'erreur'),'warn',5000);
+  }
+}
 function wire(){
   $('#brand-ico').innerHTML=icon('brand',24);
   $('#brand').addEventListener('click',()=>{if(document.body.dataset.view!=='rec')show('home')});
@@ -2915,9 +3180,9 @@ function wire(){
   $('#btn-start').addEventListener('click',startSession);
   $('#btn-import').addEventListener('click',()=>$('#file-import').click());
   $('#file-import').addEventListener('change',e=>{
-    const f=e.target.files&&e.target.files[0];
+    const fs=[...(e.target.files||[])];
     e.target.value='';
-    if(f)importAudioFile(f);
+    if(fs.length)importAudioFiles(fs);
   });
   $('#btn-transcribe').addEventListener('click',async()=>{
     const s=state.current;if(!s)return;
@@ -3022,6 +3287,11 @@ function wire(){
         toast(ok?'Transcription copiée — '+wordCount(t)+' mots.':'Copie impossible.','info',2600);
       }});
       items.push({icon:'spark',label:'Importer la réponse IA (coller)',fn:()=>{importAIReply(s)}});
+    }
+	if(state.audioBlob){
+      items.push({icon:'chip',label:'Découper l\u2019audio (pour transcription légère)',fn:()=>{
+        askSplitAudio(s);
+      }});
     }
     if(state.audioBlob){
       items.push({icon:'cloud',label:'Transcrire avec Whisper (qualité max)',fn:async()=>{
